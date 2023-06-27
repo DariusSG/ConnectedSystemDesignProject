@@ -1,0 +1,28 @@
+<html lang="en_us">
+<head>
+    <!Provide path to link to styling file, image files and 3rd party javascript library––>
+    <link rel='stylesheet' href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!Use of Javascript library socket.io.js to connect to the python web server––>
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.2/socket.io.js'></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <title></title>
+</head>
+
+<body>
+    <img id="dooropen" src="{{url_for('static', filename='images/DoorOpen.png')}}" style="display: none;" alt="">
+    <img id="doorclose" src="{{url_for('static', filename='images/DoorClose.png')}}" style="display: none;" alt="">
+    <img id="alarm" src="{{ url_for('static', filename='images/Alarm.png') }}" style="display: none;" alt="">
+    <h1>Door Control Panel</h1>
+    <div class="panel-door">
+        <h3>Door Access</h3>
+        <canvas id="DoorCanvas" width="200" height="155">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+        <button id="door">Toggle Door</button>
+    </div>
+    <h5>Copyright @ EGE205 Connected System Project Design</h5>
+</body>
+</html>
+

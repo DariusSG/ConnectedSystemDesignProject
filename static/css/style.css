@@ -1,0 +1,28 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 20px;
+  color: gray;
+}
+
+button {
+  border-radius: 30px;
+  padding: 16px 32px;
+  font-size: 16px;
+  transition-duration: 0.4s;
+  cursor: pointer;
+  width: 200px;
+  background-color: white;
+  border: 2px solid #008CBA;
+}
+
+button:hover {
+  background-color: #008CBA;
+  color: white;
+}
+
+.panel-door {
+  text-align: center;
+  width: 350px;
+  height: 250px;
+}
+
