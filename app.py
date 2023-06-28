@@ -15,18 +15,21 @@ SensorState = {}
 # SENSOR EVENT
 @socketio.event
 def BBB2_Rx(RxData: dict):
+    global SensorState
     with thread_lock:
         SensorState[RxData["sensor"]] = RxData["value"]
 
 
 @socketio.event
 def BBB3_Rx(RxData: dict):
+    global SensorState
     with thread_lock:
         SensorState[RxData["sensor"]] = RxData["value"]
 
 
 @socketio.event
 def BBB4_Rx(RxData: dict):
+    global SensorState
     with thread_lock:
         SensorState[RxData["sensor"]] = RxData["value"]
 
@@ -34,6 +37,7 @@ def BBB4_Rx(RxData: dict):
 # UI EVENT
 @socketio.event
 def BBB1_Rx(RxData: dict):
+    global SensorState
     pass
 
 
@@ -48,6 +52,7 @@ def connect():
 
 
 def application_thread():
+    global SensorState
     # Draw UI
     # Handle Code
     # Send Data to UI
