@@ -9,45 +9,33 @@ socketio = SocketIO(app)
 thread = None
 thread_lock = Lock()
 
-Magnet_Status = True
-Door_Status = True
+SensorState = {}
+
+
+# SENSOR EVENT
+@socketio.event
+def BBB2_Rx(RxData: dict):
+    with thread_lock:
+        SensorState[RxData["sensor"]] = RxData["value"]
 
 
 @socketio.event
-def SensorUpdate(RxData: dict):
-    global Magnet_Status
-    update_group = RxData["Door_Sensor"]
-    if update_group["action"] == "update":
-        with thread_lock:
-            Magnet_Status = update_group["value"]
-    else:
-        print("Unknown action")
+def BBB3_Rx(RxData: dict):
+    with thread_lock:
+        SensorState[RxData["sensor"]] = RxData["value"]
 
 
 @socketio.event
-def StateUpdate(RxData: dict):
-    global Door_Status
-    if RxData.get("User_Door", False):
-        update_group = RxData["User_Door"]
-        if update_group["action"] == "update":
-            with thread_lock:
-                Door_Status = update_group["value"]
-        elif update_group["action"] == "get":
-            socketio.emit("WebUIUpdate", {"User_Door": {
-                "action": "update",
-                "value": Door_Status
-            }})
-        else:
-            print("Unknown action")
-    elif RxData.get("AlarmStatus", False):
-        update_group = RxData["AlarmStatus"]
-        if update_group["action"] == "get":
-            socketio.emit("WebUIUpdate", {"AlarmStatus": {
-                "action": "update",
-                "value": Door_Status != Magnet_Status
-            }})
-        else:
-            print("Unknown action")
+def BBB4_Rx(RxData: dict):
+    with thread_lock:
+        SensorState[RxData["sensor"]] = RxData["value"]
+
+
+# UI EVENT
+@socketio.event
+def BBB1_Rx(RxData: dict):
+    pass
+
 
 
 @socketio.event
@@ -60,23 +48,13 @@ def connect():
 
 
 def application_thread():
-    global Door_Status
-    while True:
-        socketio.sleep(0.5)
-        if Door_Status == Magnet_Status:
-            socketio.emit("StateUpdate", {
-                "AlarmStatus": {
-                    "action": "update",
-                    "value": False
-                }
-            })
-        else:
-            socketio.emit("StateUpdate", {
-                "AlarmStatus": {
-                    "action": "update",
-                    "value": True
-                }
-            })
+    # Draw UI
+    # Handle Code
+    # Send Data to UI
+    socketio.emit('UI_Tx', {
+        'state': "",
+        'value': ""
+    })
 
 
 @app.route('/')
