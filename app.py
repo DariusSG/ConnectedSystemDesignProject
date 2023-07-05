@@ -2,7 +2,15 @@ from threading import Lock, Event, Thread
 
 from socketio import Server, WSGIApp
 
-from app_utils import FixedArray
+from app_utils import FixedArray, RawConfig
+
+CONFIG_FILE = "./CSDP.conf"
+DEFAULT_CONFIG = {
+    "TiltDistance": 0,
+    "Password": "0000"
+}
+rawconfig = RawConfig(CONFIG_FILE)
+rawconfig.load_default(DEFAULT_CONFIG)
 
 socketio = Server(async_mode='threading')
 
@@ -56,9 +64,7 @@ CompartmentState = {
         "Weight": FixedArray(100)
     },
 }
-TiltDistance = 0
 InternalAlarm = False
-Password = "1234"
 clients = []
 
 
@@ -117,6 +123,8 @@ def BBB1_Rx(RxData: dict):
             else:
                 return 415
         elif RxData['act'] == 'update':
+            if RxData['key'] == 'Password':
+                rawconfig.writeValue("USER", "Password", RxData['value'])
             pass  # TODO: add UI Related Values
         else:
             return 501
@@ -125,6 +133,7 @@ def BBB1_Rx(RxData: dict):
 def CheckAlarmStatus():
     global CompartmentState, InternalAlarm
     with thread_lock:
+        TiltDistance = rawconfig.getValue("USER", "TiltDistance")
         if TiltDistance < SensorState["infra"]:
             InternalAlarm = True
             return True
