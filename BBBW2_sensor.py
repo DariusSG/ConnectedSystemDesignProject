@@ -11,7 +11,10 @@ REFRESH = 2
 sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
-ADC.setup()
+ADC.setup() #force sensor
+
+GPIO.setup("P8_10", GPIO.IN) #reed sensor
+
 # EOF
 thread: Thread | None = None
 thread_lock = Lock()
@@ -42,9 +45,25 @@ def background_thread():
             with thread_lock:
                 # GET SENSOR DATA
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'pot',
-                    'value': ADC.read("P9_37")
+                    'sensor': 'reed1',
+                    'value': GPIO.input("P8_10")
                 })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'reed2',
+                    'value': GPIO.input("P8_10")
+                })
+                
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'force1',
+                    'value': ADC.read("P9_39")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'force2',
+                    'value': ADC.read("P9_39")
+                })
+        
         except:
             print('Unable to transmit data.')
             pass
