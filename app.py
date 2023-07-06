@@ -1,8 +1,17 @@
+import time
+from typing import Optional
 from threading import Lock, Event, Thread
 
 from socketio import Server, WSGIApp
+from flask import Flask
 
-from app_utils import FixedArray, RawConfig
+from app_utils import FixedArray, RawConfig, KeyInput, OLED
+
+import board
+import busio
+import digitalio
+import adafruit_ssd1306
+from board import SCL, SDA
 
 CONFIG_FILE = "./CSDP.conf"
 DEFAULT_CONFIG = {
@@ -12,8 +21,12 @@ DEFAULT_CONFIG = {
 rawconfig = RawConfig(CONFIG_FILE)
 rawconfig.load_default(DEFAULT_CONFIG)
 
-socketio = Server(async_mode='threading')
+socketio = Server(logger=True, async_mode='threading')
+app = Flask(__name__)
+app.wsgi_app = WSGIApp(socketio, app.wsgi_app)
+app.config['SECRET_KEY'] = 'secret!'
 
+thread: Optional['ApplicationThread'] = None
 thread_lock = Lock()
 SensorConfig = {
     "BBB2": {
@@ -63,9 +76,39 @@ CompartmentState = {
         "DoorOpen": False,
         "Weight": FixedArray(100)
     },
+    3: {
+        "Temp": 0,
+        "Alarm": False,
+        "DoorOpen": False,
+        "Weight": FixedArray(100)
+    },
+    4: {
+        "Temp": 35,
+        "Alarm": False,
+        "DoorOpen": False,
+        "Weight": FixedArray(100)
+    },
 }
 InternalAlarm = False
 clients = []
+
+keyInput = KeyInput()
+
+
+def OLEDClickInit():
+    Pin_DC = digitalio.DigitalInOut(board.P9_16)
+    Pin_DC.direction = digitalio.Direction.OUTPUT
+    Pin_DC.value = False
+    Pin_RESET = digitalio.DigitalInOut(board.P9_23)
+    Pin_RESET.direction = digitalio.Direction.OUTPUT
+    Pin_RESET.value = True
+    L_I2c = busio.I2C(SCL, SDA)
+    return L_I2c
+
+
+G_I2c = OLEDClickInit()
+Display = adafruit_ssd1306.SSD1306_I2C(64, 32, None, i2c_bus=G_I2c, i2c_address=0x3C)
+oledDriver = OLED(Display)
 
 
 def vaildateRxData(RxData: dict):
@@ -90,7 +133,8 @@ def BBB2_Rx(RxData: dict):
     global SensorState
     vaildateRxData(RxData)
     with thread_lock:
-        SensorState[RxData["sensor"]] = RxData["value"]
+        if not InternalAlarm:
+            SensorState[RxData["sensor"]] = RxData["value"]
 
 
 @socketio.event
@@ -134,35 +178,102 @@ def CheckAlarmStatus():
     global CompartmentState, InternalAlarm
     with thread_lock:
         TiltDistance = rawconfig.getValue("USER", "TiltDistance")
+        InternalAlarm = False
         if TiltDistance < SensorState["infra"]:
             InternalAlarm = True
-            return True
-        InternalAlarm = False
         for Compartment in CompartmentState.keys():
             if SensorState.get(f'reed{Compartment}') != CompartmentState[Compartment]['DoorOpen']:
                 CompartmentState[Compartment]['Alarm'] = True
-                return True
+                InternalAlarm = True
             if (sum(CompartmentState[Compartment]['Weight'].getSlice(0,25))/25) < (sum(CompartmentState[Compartment]['Weight'].getSlice(25,50))/25):
                 CompartmentState[Compartment]['Alarm'] = True
-                return True
+                InternalAlarm = True
             CompartmentState[Compartment]['Alarm'] = False
-    return False
+
+
+class OLEDThread(Thread):
+    def __init__(self):
+        super(OLEDThread, self).__init__()
+        self.daemon = True
+
+    def run(self):
+        global InternalAlarm, keyInput, oledDriver
+        currentState, alarm_cycle, oled_pass = 'StandBy', [], ''
+        retry_count, flagDisplay, Timeout = 0, False, None
+        while True:
+            with thread_lock:
+                keyInput.write_input('value')
+                if currentState == 'StandBy':
+                    oledDriver.TemperatureCycle()
+                    keyInput.waiting = True
+                    key = keyInput.getInput()
+                    if key is not None:
+                        oled_pass, retry_count, currentState = '', 0, 'Admin'
+                elif currentState == 'Alarm':
+                    if len(alarm_cycle) == 0:
+                        alarm_cycle.append('blink')
+                        for Compartment in CompartmentState.keys():
+                            if CompartmentState[Compartment]['Alarm']:
+                                alarm_cycle.extend([Compartment, 'blink'])
+                    current_display = alarm_cycle.pop(0)
+                    if isinstance(current_display, int):
+                        oledDriver.ShowImage(f"./static/box_{current_display}.png")
+                    else:
+                        oledDriver.AlarmDisplay()
+                    keyInput.waiting = True
+                    key = keyInput.getInput()
+                    if key is not None:
+                        oled_pass, retry_count, currentState = '', 0, 'Admin'
+                elif currentState == 'Admin':
+                    if retry_count == 5:
+                        currentState, retry_count = 'Alarm', 0
+                    else:
+                        if len(oled_pass) == 4:
+                            if flagDisplay:
+                                oledDriver.PassDisplay(oled_pass)
+                            else:
+                                flagDisplay = False
+                                if oled_pass == rawconfig.getValue('USER', 'Password'):
+                                    currentState, oled_pass, Timeout = "TempSet", '', time.thread_time()
+                                    InternalAlarm = False
+                                    for Compartment in CompartmentState.keys():
+                                        CompartmentState[Compartment]['Alarm'] = False
+                                    oledDriver.AGDisplay(True)
+                                else:
+                                    retry_count += 1
+                                    oledDriver.AGDisplay(False)
+                        else:
+                            oledDriver.PassDisplay(oled_pass)
+                            keyInput.waiting = True
+                            key = keyInput.getInput()
+                            if key is None:
+                                continue
+                            oled_pass += key[1]
+                            flagDisplay = True if len(oled_pass) == 4 else False
+                elif currentState == 'TempSet':
+                    currentCompartment: int = SensorState['keylock'] + 1
+                    TempSet: int = int((85 * SensorState['pot']) - 25)
+                    oledDriver.TempDisplay(currentCompartment, TempSet)
+                    CompartmentState[currentCompartment]['Temp'] = TempSet
+                    if (time.thread_time() - Timeout) > 25:
+                        currentState, Timeout = "StandBy", None
+                    else:
+                        Timeout = time.thread_time()
+                if currentState == 'StandBy' and InternalAlarm:
+                    currentState = 'Alarm'
+                oledDriver.ShowDisplay()
+            socketio.sleep(0.125)
 
 
 class ApplicationThread(Thread):
     def __init__(self):
         super(ApplicationThread, self).__init__()
-        self.daemon = True
         self.stopSignal: Event = Event()
 
     def run(self):
-        global SensorState
-        while self.stopSignal.is_set():
+        global SensorState, CompartmentState, InternalAlarm
+        while not self.stopSignal.is_set():
             CheckAlarmStatus()
-
-            # Draw UI
-            # Handle Code
-            # Send Data to UI
             socketio.emit("UI_Tx", {
                 "state": "",
                 "value": ""
@@ -171,9 +282,6 @@ class ApplicationThread(Thread):
 
     def stop(self):
         self.stopSignal.set()
-
-
-thread: ApplicationThread
 
 
 @socketio.event
@@ -195,11 +303,10 @@ def disconnect(sid):
         clients.remove(sid)
     if len(clients) == 0:
         thread.stop()
+        thread = None
 
 
 if __name__ == '__main__':
-    app = WSGIApp(socketio)
-    import eventlet
-    from eventlet.wsgi import server as eventlet_wsgi_server
-
-    eventlet_wsgi_server(eventlet.listen(('192.168.12.1', 8000)), app)
+    oledThread = OLEDThread()
+    oledThread.start()
+    app.run(host='192.168.12.220',threaded=True)
