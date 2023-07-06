@@ -5,15 +5,19 @@ import socketio
 import Adafruit_BBIO.ADC as ADC
 
 SERVER_IP = ""
-SENSOR_NODE = "BBB2"
+SENSOR_NODE = "BBB4"
 REFRESH = 2
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
-ADC.setup() #force sensor
+ADC.setup() #Keylock sensor
 
-GPIO.setup("P8_10", GPIO.IN) #reed sensor
+#Keylock sensor
+GPIO.setup("P9_12", GPIO.IN)
+GPIO.setup("P9_14", GPIO.IN)
+GPIO.setup("P9_15", GPIO.IN)
+
 
 # EOF
 thread: Thread | None = None
@@ -45,25 +49,45 @@ def background_thread():
             with thread_lock:
                 # GET SENSOR DATA
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'reed1',
-                    'value': GPIO.input("P8_10")
+                    'sensor': 'keypad0',
+                    'value': ADC.read("P9_40")
                 })
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'reed2',
-                    'value': GPIO.input("P8_10")
-                })
-                
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'force1',
-                    'value': ADC.read("P9_39")
+                    'sensor': 'keypad1',
+                    'value': ADC.read("P9_40")
                 })
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'force2',
-                    'value': ADC.read("P9_39")
+                    'sensor': 'keypad2',
+                    'value': ADC.read("P9_40")
                 })
-        
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad3',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad4',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad5',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad6',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'IR',
+                    'value': ADC.read("P9_38")
+                })
+            
         except:
             print('Unable to transmit data.')
             pass

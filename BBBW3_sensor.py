@@ -5,15 +5,19 @@ import socketio
 import Adafruit_BBIO.ADC as ADC
 
 SERVER_IP = ""
-SENSOR_NODE = "BBB2"
+SENSOR_NODE = "BBB3"
 REFRESH = 2
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
-ADC.setup() #force sensor
+ADC.setup() #Keylock sensor
 
-GPIO.setup("P8_10", GPIO.IN) #reed sensor
+#Keylock sensor
+GPIO.setup("P9_12", GPIO.IN)
+GPIO.setup("P9_14", GPIO.IN)
+GPIO.setup("P9_15", GPIO.IN)
+
 
 # EOF
 thread: Thread | None = None
@@ -45,23 +49,24 @@ def background_thread():
             with thread_lock:
                 # GET SENSOR DATA
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'reed1',
-                    'value': GPIO.input("P8_10")
+                    'sensor': 'keylock0',
+                    'value': ADC.read("P9_36")
                 })
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'reed2',
-                    'value': GPIO.input("P8_10")
+                    'sensor': 'keylock1',
+                    'value': ADC.read("P9_36")
                 })
                 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'force1',
-                    'value': ADC.read("P9_39")
+                    'sensor': 'keylock2',
+                    'value': ADC.read("P9_36")
                 })
+                
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'force2',
-                    'value': ADC.read("P9_39")
+                    'sensor': 'pot',
+                    'value': ADC.read("P9_37")
                 })
         
         except:
