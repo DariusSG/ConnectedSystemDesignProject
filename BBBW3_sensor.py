@@ -50,17 +50,17 @@ def background_thread():
                 # GET SENSOR DATA
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'keylock0',
-                    'value': ADC.read("P9_40")
+                    'value': ADC.read("P9_36")
                 })
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'keylock1',
-                    'value': ADC.read("P9_40")
+                    'value': ADC.read("P9_36")
                 })
                 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'keylock2',
-                    'value': ADC.read("P9_40")
+                    'value': ADC.read("P9_36")
                 })
                 
 
