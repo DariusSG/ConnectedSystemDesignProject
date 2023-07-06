@@ -49,7 +49,37 @@ def background_thread():
             with thread_lock:
                 # GET SENSOR DATA
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad',
+                    'sensor': 'keypad0',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad1',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad2',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad3',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad4',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad5',
+                    'value': ADC.read("P9_40")
+                })
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'keypad6',
                     'value': ADC.read("P9_40")
                 })
 
