@@ -27,6 +27,7 @@ app.wsgi_app = WSGIApp(socketio, app.wsgi_app)
 app.config['SECRET_KEY'] = 'secret!'
 
 thread: Optional['ApplicationThread'] = None
+oledThread: Optional['OLEDThread'] = None
 thread_lock = Lock()
 SensorConfig = {
     "BBB2": {
@@ -54,14 +55,14 @@ SensorConfig = {
     }
 }
 SensorState = {
-    "reed1": None,
-    "reed2": None,
-    "force1": None,
-    "force2": None,
-    "pot": None,
-    "keypad": None,
-    "keylock": None,
-    "infra": None
+    "reed1": False,
+    "reed2": False,
+    "force1": 0,
+    "force2": 0,
+    "pot": 0,
+    "keypad": 0,
+    "keylock": 0,
+    "infra": 0
 }
 CompartmentState = {
     1: {
@@ -194,13 +195,13 @@ def CheckAlarmStatus():
 class OLEDThread(Thread):
     def __init__(self):
         super(OLEDThread, self).__init__()
-        self.daemon = True
+        self.stopSignal: Event = Event()
 
     def run(self):
         global InternalAlarm, keyInput, oledDriver
         currentState, alarm_cycle, oled_pass = 'StandBy', [], ''
         retry_count, flagDisplay, Timeout = 0, False, None
-        while True:
+        while not self.stopSignal.is_set():
             with thread_lock:
                 keyInput.write_input('value')
                 if currentState == 'StandBy':
@@ -264,6 +265,9 @@ class OLEDThread(Thread):
                 oledDriver.ShowDisplay()
             socketio.sleep(0.125)
 
+    def stop(self):
+        self.stopSignal.set()
+
 
 class ApplicationThread(Thread):
     def __init__(self):
@@ -284,29 +288,41 @@ class ApplicationThread(Thread):
         self.stopSignal.set()
 
 
+def ensureClients():
+    ensure_list = ["BBB2","BBB3","BBB4"]
+    with thread_lock:
+        for sid, sensor_node in clients:
+            if sensor_node in ensure_list:
+                ensure_list.remove(sensor_node)
+            else:
+                return False
+    return True
+
+
 @socketio.event
 def connect(sid, environ, auth):
-    global thread
+    global thread, oledThread
     print('Connection established.')
     with thread_lock:
-        if thread is None:
-            thread = ApplicationThread()
-            thread.start()
         if sid not in clients:
-            clients.append(sid)
+            clients.append((sid, environ['SENSOR_NODE']))
+        if thread is None and oledThread is None and ensureClients():
+            thread = ApplicationThread()
+            oledThread = OLEDThread()
+            thread.start()
+            oledThread.start()
 
 
 @socketio.event
 def disconnect(sid):
-    global thread
+    global thread, oledThread
     if sid in clients:
         clients.remove(sid)
-    if len(clients) == 0:
+    if not ensureClients and thread is not None and oledThread is not None:
         thread.stop()
-        thread = None
+        oledThread.stop()
+        thread, oledThread = None, None
 
 
 if __name__ == '__main__':
-    oledThread = OLEDThread()
-    oledThread.start()
     app.run(host='192.168.12.220',threaded=True)

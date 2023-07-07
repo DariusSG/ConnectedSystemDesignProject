@@ -12,7 +12,6 @@ sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
 ADC.setup() #force sensor
-
 GPIO.setup("P8_10", GPIO.IN) #reed sensor
 
 # EOF
@@ -73,7 +72,7 @@ def background_thread():
 def start_server():
     while True:
         try:
-            sio.connect(SERVER_IP)
+            sio.connect(SERVER_IP, headers={"SENSOR_NODE":SENSOR_NODE})
             break
         except KeyboardInterrupt:
             break

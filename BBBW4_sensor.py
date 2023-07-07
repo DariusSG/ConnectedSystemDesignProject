@@ -97,7 +97,7 @@ def background_thread():
 def start_server():
     while True:
         try:
-            sio.connect(SERVER_IP)
+            sio.connect(SERVER_IP, headers={"SENSOR_NODE": SENSOR_NODE})
             break
         except KeyboardInterrupt:
             break
