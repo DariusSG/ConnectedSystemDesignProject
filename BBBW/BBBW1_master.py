@@ -5,7 +5,7 @@ from threading import Lock, Event, Thread
 from socketio import Server, WSGIApp
 from flask import Flask
 
-from app_utils import FixedArray, RawConfig, KeyInput, OLED
+from BBBW1_utils import FixedArray, RawConfig, KeyInput, OLED
 
 import board
 import busio
