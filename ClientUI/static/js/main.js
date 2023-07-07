@@ -1,67 +1,32 @@
-$(document).ready(function () {
-    //Initialization and declaration of global variable
-    const socket = io.connect('http://192.168.12.1:5000');
+const projectIMGCanvas = document.getElementById('project-model');
+const projectIMGContext = projectIMGCanvas.getContext('2d');
 
-    const doorAccessCanvas = document.getElementById("DoorCanvas");
-    const doorAccessContext = doorAccessCanvas.getContext("2d");
-    const doorOpenImage = document.getElementById("dooropen");
-    const doorCloseImage = document.getElementById("doorclose");
-    const alarmImage = document.getElementById("alarm")
+function loadImage(href, dx, dy, scale=1) {
+    const image = new Image(60,45);
+    image.src = href;
+    image.onload = function drawImage() {
+        projectIMGCanvas.width = this.naturalWidth * scale;
+        projectIMGCanvas.height = this.naturalHeight * scale;
 
-    let DoorOpenCloseStatus;
-    let AlarmStatus = false;
-
-    //Event triggered when python web server received data from BBBW1
-    socket.on('WebUIUpdate', function (RxData) {
-        let _data = RxData
-        if (_data.hasOwnProperty("User_Door")) {
-            let update_group = _data["User_Door"]
-            if (update_group["action"] === "update") {
-                DoorOpenCloseStatus = update_group["value"]
-                console.log("Door Status: " + DoorOpenCloseStatus)
-            }
-        }
-        if (_data.hasOwnProperty("AlarmStatus")) {
-            let update_group = _data["AlarmStatus"]
-            if (update_group["action"] === "update") {
-                AlarmStatus = update_group["value"]
-                console.log("Alarm Status: " + AlarmStatus)
-            }
-        }
-        updateDoor()
-    });
-
-    function updateDoor() {
-        doorAccessContext.globalAlpha = 1.0;
-        doorAccessContext.clearRect(0, 0, 200, 155);
-        console.log("Door Status: " + DoorOpenCloseStatus)
-        if (AlarmStatus) {
-            doorAccessContext.drawImage(alarmImage, 50, 28);
-        } else {
-            if (DoorOpenCloseStatus) {
-                doorAccessContext.drawImage(doorCloseImage, 50, 28);
-            } else {
-                doorAccessContext.drawImage(doorOpenImage, 50, 28);
-            }
-        }
-        doorAccessContext.fill();
+        projectIMGContext.drawImage(this, dx, dy, projectIMGCanvas.width, projectIMGCanvas.height);
+        projectIMGContext.fillRect(40, 295, 162, 115);
+        projectIMGContext.fillRect(205, 295, 162, 115);
+        projectIMGContext.fillRect(375, 295, 162, 115);
+        projectIMGContext.fillRect(38, 415, 495, 108);
     }
+    return image;
+}
 
-    function toggleDoor() {
-        if (DoorOpenCloseStatus) {
-            socket.emit("StateUpdate", {"User_Door": {"action": "update", "value": false}})
-            console.log("Door Toggle to open")
-        } else {
-            socket.emit("StateUpdate", {"User_Door": {"action": "update", "value": true}})
-            console.log("Door Toggle to close")
-        }
-        socket.emit("StateUpdate", {"User_Door": {"action": "get"}})
-        socket.emit("StateUpdate", {"AlarmStatus": {"action": "get"}})
-    }
+loadImage("/static/images/projectModels/main_box.png", 0, 0, 0.8)
 
-    document.getElementById("door").addEventListener("click", toggleDoor);
 
-    socket.emit("StateUpdate", {"User_Door": {"action": "get"}})
-    socket.emit("StateUpdate", {"AlarmStatus": {"action": "get"}})
-    updateDoor()
-});
+function getCursorPosition(canvas, event) {
+    const rect = canvas.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
+    console.log("x: " + x + " y: " + y)
+}
+
+projectIMGCanvas.addEventListener('mousedown', function(e) {
+    getCursorPosition(projectIMGCanvas, e)
+})

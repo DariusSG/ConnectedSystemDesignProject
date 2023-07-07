@@ -1,28 +1,27 @@
 <html lang="en_us">
 <head>
     <!Provide path to link to styling file, image files and 3rd party javascript library––>
-    <link rel='stylesheet' href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel='stylesheet' type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
 
     <!Use of Javascript library socket.io.js to connect to the python web server––>
-    <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.2/socket.io.js'></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <title></title>
+    <script type="text/javascript" src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
+    <script type="text/javascript" src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.2/socket.io.js'></script>
+    <title>ClientUI</title>
 </head>
 
 <body>
-    <img id="dooropen" src="{{url_for('static', filename='images/DoorOpen.png')}}" style="display: none;" alt="">
-    <img id="doorclose" src="{{url_for('static', filename='images/DoorClose.png')}}" style="display: none;" alt="">
-    <img id="alarm" src="{{ url_for('static', filename='images/Alarm.png') }}" style="display: none;" alt="">
-    <h1>Door Control Panel</h1>
-    <div class="panel-door">
-        <h3>Door Access</h3>
-        <canvas id="DoorCanvas" width="200" height="155">
-            Your browser does not support the HTML5 canvas tag.
-        </canvas>
-        <button id="door">Toggle Door</button>
+    <div class="navbar">
+        <div class="navbar-cell navbar-icon" id="navbar-icon"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="icon"></div>
+        <ul class="navbar-group navbar-group-1">
+            <li><div class="navbar-cell" id="navbar-cell-Something"><span>Something</span></div></li>
+            <li><div class="navbar-cell" id="navbar-cell-Something"><span>Something 1</span></div></li>
+            <li><div class="navbar-cell" id="navbar-cell-Something"><span>Something 2</span></div></li>
+        </ul>
     </div>
-    <h5>Copyright @ EGE205 Connected System Project Design</h5>
+    <div class="center">
+        <canvas id="project-model"></canvas>
+    </div>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
 

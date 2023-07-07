@@ -2,27 +2,65 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 20px;
   color: gray;
+  margin: 0;
+  padding: 0;
 }
 
-button {
-  border-radius: 30px;
-  padding: 16px 32px;
-  font-size: 16px;
-  transition-duration: 0.4s;
-  cursor: pointer;
-  width: 200px;
-  background-color: white;
-  border: 2px solid #008CBA;
+div.navbar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  border: 1px solid red;
 }
 
-button:hover {
-  background-color: #008CBA;
-  color: white;
+div.navbar .navbar-group {
+  list-style-type: none;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  vertical-align: center;
+  margin: 10px;
+  padding: 0;
+  border: 1px solid blue;
 }
 
-.panel-door {
+div.navbar .navbar-cell {
+  width: 100px;
+  height: 32px;
+  border: 1px solid yellow;
   text-align: center;
-  width: 350px;
-  height: 250px;
+  margin: 10px;
 }
 
+div.navbar .navbar-group .navbar-cell {
+  margin: 5px 10px;
+}
+
+div.navbar .navbar-icon {
+  margin: 5px 50px;
+  width: 100px;
+  height: 50px;
+}
+
+div.navbar .navbar-icon img {
+  width: 100px;
+  height: 50px;
+}
+
+div.navbar .navbar-cell span {
+  line-height: 32px;
+  vertical-align: middle;
+  text-align: center;
+  font-size: medium;
+  font-weight: normal;
+}
+
+div.center {
+  margin: auto;
+  text-align: center;
+}
+
+.navbar-group-1 {
+  position: relative;
+  left: -100px;
+}
