@@ -4,6 +4,7 @@
     <link rel='stylesheet' type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
 
     <!Use of Javascript library socket.io.js to connect to the python web server––>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/pureknob.js') }}"></script>
     <script type="text/javascript" src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
     <script type="text/javascript" src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.2/socket.io.js'></script>
     <title>ClientUI</title>
@@ -13,13 +14,46 @@
     <div class="navbar">
         <div class="navbar-cell navbar-icon" id="navbar-icon"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="icon"></div>
         <ul class="navbar-group navbar-group-1">
-            <li><div class="navbar-cell" id="navbar-cell-Something"><span>Something</span></div></li>
-            <li><div class="navbar-cell" id="navbar-cell-Something"><span>Something 1</span></div></li>
-            <li><div class="navbar-cell" id="navbar-cell-Something"><span>Something 2</span></div></li>
+            <li><div class="navbar-cell" id="navbar-cell-1"><span>Lock Timeout</span></div></li>
+            <li><div class="navbar-cell" id="navbar-cell-2"><span>Calibration</span></div></li>
+            <li><div class="navbar-cell" id="navbar-cell-3"><span>Security</span></div></li>
         </ul>
     </div>
     <div class="center">
         <canvas id="project-model"></canvas>
+        <dialog id="modal-box">
+            <div class="center flex-row">
+                <div class="modal-group flex-column" id="box-temperature">
+                    <div id="tempSet">
+                        <div id="temp-knob"></div>
+                    </div>
+                    <div id="tempState">
+                        <div id="view-temp-state"></div>
+                        <span>Mode: ???</span>
+                    </div>
+                </div>
+                <div class="modal-group flex-column" id="box-overview">
+                    <div id="boxView">
+                        <span>Box 1</span>
+                        <img src="{{ url_for('static', filename='images/projectModels/box.png') }}" alt="boxView">
+                    </div>
+                    <div id="boxSave">
+                        <button id="box-save-config">Click Here to Save</button>
+                    </div>
+                </div>
+                <div class="modal-group flex-column" id="box-state">
+                    <div id="boxState">
+                        <div id="view-box-state"></div>
+                        <span>Items Present</span>
+                    </div>
+                    <div id="lockState">
+                        <div id="view-lock-state"></div>
+                        <span>Locked</span>
+                    </div>
+                </div>
+            </div>
+            <button id="modal-close"></button>
+        </dialog>
     </div>
     <script type="text/javascript" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

@@ -1,7 +1,6 @@
 body {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 20px;
-  color: gray;
   margin: 0;
   padding: 0;
 }
@@ -10,7 +9,6 @@ div.navbar {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  border: 1px solid red;
 }
 
 div.navbar .navbar-group {
@@ -21,13 +19,11 @@ div.navbar .navbar-group {
   vertical-align: center;
   margin: 10px;
   padding: 0;
-  border: 1px solid blue;
 }
 
 div.navbar .navbar-cell {
   width: 100px;
   height: 32px;
-  border: 1px solid yellow;
   text-align: center;
   margin: 10px;
 }
@@ -60,6 +56,50 @@ div.center {
   text-align: center;
 }
 
+dialog {
+  padding: 25px;
+  width: 750px;
+  height: 325px;
+}
+
+dialog div.center span {
+  line-height: 32px;
+  vertical-align: middle;
+  text-align: center;
+  font-size: medium;
+  font-weight: normal;
+}
+
+dialog div.center div.modal-group {
+  width: 700px;
+  height: 275px;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+dialog button#modal-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: white center no-repeat url("/static/images/close.png");
+  background-size: 32px;
+}
+
 .navbar-group-1 {
   position: relative;
   left: -100px;
@@ -67,4 +107,50 @@ div.center {
 
 #project-model {
   cursor: pointer;
+}
+
+div#box-overview div#boxSave {
+  border: 2px solid black;
+  width: 150px;
+  height: 50px;
+  vertical-align: center;
+  text-align: center;
+  justify-self: center;
+  margin: 10px auto;
+}
+
+div#box-overview div#boxSave button {
+  outline: none;
+  border: none;
+  line-height: 30px;
+  margin: 10px 10px;
+  background-color: white;
+  cursor: pointer;
+}
+
+div#tempSet,
+div#lockState,
+div#boxState,
+div#tempState {
+  margin: auto;
+}
+
+div#tempSet,
+div#boxState {
+  margin-top: 50px;
+}
+
+div#tempSet div#temp-knob {
+  width: 150px;
+  height: 150px;
+  margin: auto;
+}
+
+div#box-state div#lockState div#view-lock-state,
+div#box-state div#boxState div#view-box-state,
+div#box-temperature div#tempState div#view-temp-state {
+  width: 150px;
+  height: 150px;
+  background: white center no-repeat;
+  background-size: 150px ;
 }
