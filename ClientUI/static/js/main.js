@@ -3,9 +3,10 @@ class ModalDialog {
         this.modal = document.getElementById(elementID);
         this.boxID = 0;
         const modal_close = this.modal.querySelector("#modal-close");
-        modal_close.addEventListener("click", (e) => {
-            this.modal.close();
-        })
+        modal_close.addEventListener("click", () => this.modal.close());
+
+        const modal_save = this.modal.querySelector("#box-save-config");
+        modal_save.addEventListener("click", () => this.#saveConfig());
     }
 
     setBoxID(box_id, locked, empty, tempSet, tempState) {
@@ -14,6 +15,19 @@ class ModalDialog {
         this.empty = empty
         this.tempSet = tempSet
         this.tempState = tempState
+    }
+
+    #knobListener(knob, value) {
+        this.tempSet = value
+    }
+
+    #saveConfig() {
+        const boxstate = {
+            "boxID":  this.boxID,
+            "doorOpen": !this.locked,
+            "tempSet": this.tempSet
+        }
+        // Send over socketIO
     }
 
     #updateModal() {
@@ -56,8 +70,8 @@ class ModalDialog {
         knob.setProperty('fnStringToValue', function(string) { return parseInt(string.slice(0, -1)); });
         knob.setProperty('fnValueToString', function(value) { return value.toString()+"°C"; });
         knob.setValue(this.tempSet);
-        tempSetIMG.innerHTML = "";
-        tempSetIMG.appendChild(knob.node());
+        tempSetIMG.replaceChildren(knob.node());
+        knob.addListener(this.#knobListener);
 
         switch (this.tempState) {
             case 0:
@@ -77,13 +91,13 @@ class ModalDialog {
         }
 
         boxID_text.textContent = `Box ${this.boxID}`;
+
     }
 
     showModal() {
         this.#updateModal()
         return this.modal.showModal();
     }
-
 }
 
 const projectIMGCanvas = document.getElementById('project-model');
