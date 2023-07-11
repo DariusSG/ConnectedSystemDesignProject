@@ -15,12 +15,6 @@ sio = socketio.Client(logger=True, engineio_logger=True)
 # GPIO SETUP
 ADC.setup() #Keylock sensor
 
-#Keylock sensor
-GPIO.setup("P9_12", GPIO.IN)
-GPIO.setup("P9_14", GPIO.IN)
-GPIO.setup("P9_15", GPIO.IN)
-
-
 # EOF
 thread: Thread | None = None
 thread_lock = Lock()
