@@ -48,22 +48,25 @@ def background_thread():
         try:
             with thread_lock:
                 # GET SENSOR DATA
+                #BBBW3 Clip 1
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'keylock0',
                     'value': ADC.read("P9_36")
                 })
 
+                 #BBBW3 Clip 1
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'keylock1',
                     'value': ADC.read("P9_36")
                 })
-                
+
+                 #BBBW3 Clip 1
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'keylock2',
                     'value': ADC.read("P9_36")
                 })
                 
-
+                #BBBW3 Clip 3
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'pot',
                     'value': ADC.read("P9_37")
