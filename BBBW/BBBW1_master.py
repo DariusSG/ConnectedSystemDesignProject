@@ -47,9 +47,8 @@ SensorConfig = {
         }
     },
     "BBB4": {
-        "sensor": ["keypad", "infra"],
+        "sensor": ["infra"],
         "value": {
-            "keypad": [f'T{i}' for i in range(1, 7)],
             "infra": int,
         }
     }
@@ -112,8 +111,8 @@ Display = adafruit_ssd1306.SSD1306_I2C(64, 32, None, i2c_bus=G_I2c, i2c_address=
 oledDriver = OLED(Display)
 
 
-def vaildateRxData(RxData: dict):
-    board_config = SensorConfig.get("BBB2")
+def vaildateRxData(board, RxData: dict):
+    board_config = SensorConfig.get(board)
     if RxData["sensor"] not in board_config["sensor"]:
         socketio.logger.warning(f'Unknown Sensor {RxData["sensor"]} sent from BBB2')
         return False
@@ -132,7 +131,7 @@ def vaildateRxData(RxData: dict):
 @socketio.event
 def BBB2_Rx(RxData: dict):
     global SensorState
-    vaildateRxData(RxData)
+    vaildateRxData("BBB2", RxData)
     with thread_lock:
         if not InternalAlarm:
             SensorState[RxData["sensor"]] = RxData["value"]
@@ -141,7 +140,7 @@ def BBB2_Rx(RxData: dict):
 @socketio.event
 def BBB3_Rx(RxData: dict):
     global SensorState
-    vaildateRxData(RxData)
+    vaildateRxData("BBB3", RxData)
     with thread_lock:
         SensorState[RxData["sensor"]] = RxData["value"]
 
@@ -149,7 +148,7 @@ def BBB3_Rx(RxData: dict):
 @socketio.event
 def BBB4_Rx(RxData: dict):
     global SensorState
-    vaildateRxData(RxData)
+    vaildateRxData("BBB4", RxData)
     with thread_lock:
         SensorState[RxData["sensor"]] = RxData["value"]
 
@@ -289,7 +288,7 @@ class ApplicationThread(Thread):
 
 
 def ensureClients():
-    ensure_list = ["BBB2","BBB3","BBB4"]
+    ensure_list = ["BBB2","BBB3", "BBB4"]
     with thread_lock:
         for sid, sensor_node in clients:
             if sensor_node in ensure_list:
