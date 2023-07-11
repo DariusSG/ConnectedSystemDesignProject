@@ -4,6 +4,8 @@ import socketio
 
 import Adafruit_BBIO.ADC as ADC
 
+import Adafruit_BBIO.GPIO as GPIO
+
 SERVER_IP = ""
 SENSOR_NODE = "BBB4"
 REFRESH = 2
