@@ -6,16 +6,14 @@ import Adafruit_BBIO.ADC as ADC
 
 import Adafruit_BBIO.GPIO as GPIO
 
-SERVER_IP = ""
+SERVER_IP = "http://192.168.12.2:5000"
 SENSOR_NODE = "BBB3"
 REFRESH = 2
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
-ADC.setup() #Keylock sensor
-
-#Keylock sensor
+ADC.setup()
 GPIO.setup("P9_12", GPIO.IN)
 GPIO.setup("P9_14", GPIO.IN)
 GPIO.setup("P9_15", GPIO.IN)
@@ -50,25 +48,19 @@ def background_thread():
         try:
             with thread_lock:
                 # GET SENSOR DATA
-                #BBBW3 Clip 1
+                keylock = None
+                if GPIO.input("P9_12"):
+                    keylock = 0
+                elif GPIO.input("P9_14"):
+                    keylock = 1
+                elif GPIO.input("P9_15"):
+                    keylock = 2
+
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keylock0',
-                    'value': ADC.read("P9_36")
+                    'sensor': 'keylock',
+                    'value': keylock
                 })
 
-                 #BBBW3 Clip 1
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keylock1',
-                    'value': ADC.read("P9_36")
-                })
-
-                 #BBBW3 Clip 1
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keylock2',
-                    'value': ADC.read("P9_36")
-                })
-                
-                #BBBW3 Clip 3
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'pot',
                     'value': ADC.read("P9_37")

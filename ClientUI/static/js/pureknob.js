@@ -450,8 +450,7 @@
 				 */
 				'commit': function() {
 					const properties = this._properties;
-					const value = properties.val;
-					this._previousVal = value;
+					this._previousVal = properties.val;
 					this.redraw();
 					this._notifyUpdate();
 				},
@@ -461,8 +460,7 @@
 				 */
 				'getProperty': function(key) {
 					const properties = this._properties;
-					const value = properties[key];
-					return value;
+					return properties[key];
 				},
 
 				/*
@@ -470,16 +468,14 @@
 				 */
 				'getValue': function() {
 					const properties = this._properties;
-					const value = properties.val;
-					return value;
+					return properties.val;
 				},
 
 				/*
 				 * Return the DOM node representing this knob.
 				 */
 				'node': function() {
-					const div = this._div;
-					return div;
+					return this._div;
 				},
 
 				/*

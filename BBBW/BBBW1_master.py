@@ -164,6 +164,7 @@ def BBB1_Rx(RxData: dict):
         if RxData['act'] == 'get':
             if RxData['key'] == 'state':
                 boxID = RxData['value']['boxID']
+                weight = sum(CompartmentState[boxID]['Weight'].getSlice(0,25)) / 25
                 socketio.emit("UI_Tx", {
                     "act": 'update',
                     "key": 'state',
@@ -171,7 +172,7 @@ def BBB1_Rx(RxData: dict):
                         'boxID': boxID,
                         'Temp': CompartmentState[boxID]['Temp'],
                         'DoorOpen': CompartmentState[boxID]['DoorOpen'],
-                        'Weight': (sum(CompartmentState[boxID]['Weight'].getSlice(0,25)) / 25)
+                        'Weight': weight
                     }
                 })
             elif RxData['key'] == 'alarm_pin':
@@ -245,7 +246,7 @@ class OLEDThread(Thread):
         retry_count, flagDisplay, Timeout = 0, False, None
         while not self.stopSignal.is_set():
             with thread_lock:
-                keyInput.write_input(ADC.read("P9_38")
+                keyInput.write_input(ADC.read("P9_38"))
                 if ResetStatus:
                     oledDriver.OLED_Display('Reset In\nProgress')
                 elif currentState == 'StandBy':

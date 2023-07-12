@@ -4,17 +4,14 @@ import socketio
 
 import Adafruit_BBIO.ADC as ADC
 
-import Adafruit_BBIO.GPIO as GPIO
-
-SERVER_IP = ""
+SERVER_IP = "http://192.168.12.2:5000"
 SENSOR_NODE = "BBB4"
 REFRESH = 2
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
-ADC.setup() #Keylock sensor
-
+ADC.setup()
 # EOF
 thread: Thread | None = None
 thread_lock = Lock()

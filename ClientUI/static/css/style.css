@@ -56,6 +56,11 @@ div.center {
   text-align: center;
 }
 
+
+body>div.center {
+  margin-top: 25vh;
+}
+
 dialog {
   padding: 25px;
   width: 750px;

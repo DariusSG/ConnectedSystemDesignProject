@@ -1,12 +1,13 @@
 <html lang="en_us">
 <head>
     <!Provide path to link to styling file, image files and 3rd party javascript library––>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel='stylesheet' type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
 
     <!Use of Javascript library socket.io.js to connect to the python web server––>
     <script type="text/javascript" src="{{ url_for('static', filename='js/pureknob.js') }}"></script>
-    <script type="text/javascript" src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
-    <script type="text/javascript" src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.2/socket.io.js'></script>
+    <script type="text/javascript" src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <title>ClientUI</title>
 </head>
 
@@ -26,6 +27,7 @@
                 <div class="modal-group flex-column" id="box-temperature">
                     <div id="tempSet">
                         <div id="temp-knob"></div>
+                        <span>Mode: ???</span>
                     </div>
                     <div id="tempState">
                         <div id="view-temp-state"></div>

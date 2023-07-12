@@ -9,16 +9,11 @@ class ModalDialog {
         modal_save.addEventListener("click", () => this.#saveConfig());
     }
 
-    setBoxID(box_id, locked, empty, tempSet, tempState) {
+    setBoxID(box_id, locked, empty, tempSet) {
         this.boxID = box_id
         this.locked = locked
         this.empty = empty
         this.tempSet = tempSet
-        this.tempState = tempState
-    }
-
-    #knobListener(knob, value) {
-        this.tempSet = value
     }
 
     #saveConfig() {
@@ -30,6 +25,32 @@ class ModalDialog {
         // Send over socketIO
     }
 
+    #updateTempState(modal, tempSet) {
+        function between(val, min, max) {
+            return val >= min && val <= max;
+        }
+
+        const tempStateIMG = modal.querySelector("div#box-temperature div#tempState div#view-temp-state")
+        const tempState_text = modal.querySelector("div#box-temperature div#tempState span")
+
+        if (between(tempSet, -25, -5)) {
+            tempStateIMG.style = "background-image: url('/static/images/states/temperature/Refridgerate_cooler.png')"
+            tempState_text.textContent = "Mode: Freezer"
+        }
+        else if (between(tempSet, -6, 12)) {
+            tempStateIMG.style = "background-image: url('/static/images/states/temperature/Refridgerate_cooler.png')"
+            tempState_text.textContent = "Mode: Refrigerate"
+        }
+        else if (between(tempSet, 13, 24)) {
+            tempStateIMG.style = "background-image: url('/static/images/states/temperature/room_temp.png')"
+            tempState_text.textContent = "Mode: Off"
+        }
+        else if (between(tempSet, 24, 60)) {
+            tempStateIMG.style = "background-image: url('/static/images/states/temperature/heater.png')"
+            tempState_text.textContent = "Mode: Heater"
+        }
+    }
+
     #updateModal() {
         const lockIMG = this.modal.querySelector("div#box-state div#lockState div#view-lock-state")
         const lock_text = this.modal.querySelector("div#box-state div#lockState span")
@@ -38,9 +59,6 @@ class ModalDialog {
         const boxstate_text = this.modal.querySelector("div#box-state div#boxState span")
 
         const tempSetIMG = this.modal.querySelector("div#box-temperature div#tempSet div#temp-knob")
-
-        const tempStateIMG = this.modal.querySelector("div#box-temperature div#tempState div#view-temp-state")
-        const tempState_text = this.modal.querySelector("div#box-temperature div#tempState span")
 
         const boxID_text = this.modal.querySelector("div#box-overview div#boxView span");
 
@@ -67,28 +85,16 @@ class ModalDialog {
         knob.setProperty('trackWidth', 0.4);
         knob.setProperty('valMin', -25);
         knob.setProperty('valMax', 65);
-        knob.setProperty('fnStringToValue', function(string) { return parseInt(string.slice(0, -1)); });
+        knob.setProperty('fnStringToValue', function(string) { return parseInt(/^-?\d*$/g.exec(string)[0]); });
         knob.setProperty('fnValueToString', function(value) { return value.toString()+"°C"; });
         knob.setValue(this.tempSet);
         tempSetIMG.replaceChildren(knob.node());
-        knob.addListener(this.#knobListener);
+        knob.addListener((knob, value) => {
+            this.tempSet = value;
+            this.#updateTempState(this.modal, this.tempSet);
+        });
 
-        switch (this.tempState) {
-            case 0:
-                tempStateIMG.style = "background-image: url('/static/images/states/temperature/heater.png')"
-                tempState_text.textContent = "Mode: Heater"
-                break;
-
-            case 1:
-                tempStateIMG.style = "background-image: url('/static/images/states/temperature/Refridgerate_cooler.png')"
-                tempState_text.textContent = "Mode: Freezer"
-                break;
-
-            case 2:
-                tempStateIMG.style = "background-image: url('/static/images/states/temperature/room_temp.png')"
-                tempState_text.textContent = "Mode: None"
-                break;
-        }
+        this.#updateTempState(this.modal, this.tempSet)
 
         boxID_text.textContent = `Box ${this.boxID}`;
 
@@ -129,23 +135,25 @@ projectIMGCanvas.addEventListener('click', function(e) {
         const rect = projectIMGCanvas.getBoundingClientRect()
         const x = e.clientX - rect.left
         const y = e.clientY - rect.top
-
+        console.log(x,y);
         return !!(between(x, rect_x, rect_x + rect_w) && between(y, rect_y, rect_y + rect_h));
     }
 
-    if (isIntersecting(e, 40, 295, 162, 115)) {
+    isIntersecting(e, 0,0,0,0);
+
+    if (isIntersecting(e, 5, 142, 120, 85)) {
         BoxModal.setBoxID(1, true, false, -25, 1);
         console.log("Box 1 is clicked");
     }
-    if (isIntersecting(e, 205, 295, 162, 115)) {
+    if (isIntersecting(e, 135, 140, 120, 85)) {
         BoxModal.setBoxID(2, true, false, -25, 1);
         console.log("Box 2 is clicked");
     }
-    if (isIntersecting(e, 375, 295, 162, 115)) {
+    if (isIntersecting(e, 262, 140, 120, 85)) {
         BoxModal.setBoxID(3, true, false, -25, 1);
         console.log("Box 3 is clicked");
     }
-    if (isIntersecting(e, 38, 415, 495, 108)) {
+    if (isIntersecting(e, 5, 235, 375, 90)) {
         BoxModal.setBoxID(4, true, false, -25, 1);
         console.log("Box 4 is clicked");
     }
