@@ -4,6 +4,8 @@ import socketio
 
 import Adafruit_BBIO.ADC as ADC
 
+import Adafruit_BBIO.GPIO as GPIO
+
 SERVER_IP = ""
 SENSOR_NODE = "BBB2"
 REFRESH = 2
@@ -50,7 +52,7 @@ def background_thread():
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'reed2',
-                    'value': GPIO.input("P8_10")
+                    'value': GPIO.input("P9_38")
                 })
                 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
@@ -60,7 +62,7 @@ def background_thread():
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'force2',
-                    'value': ADC.read("P9_39")
+                    'value': ADC.read("P9_37")
                 })
         
         except:

@@ -4,6 +4,8 @@ import socketio
 
 import Adafruit_BBIO.ADC as ADC
 
+import Adafruit_BBIO.GPIO as GPIO
+
 SERVER_IP = ""
 SENSOR_NODE = "BBB4"
 REFRESH = 2
@@ -12,12 +14,6 @@ sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
 ADC.setup() #Keylock sensor
-
-#Keylock sensor
-GPIO.setup("P9_12", GPIO.IN)
-GPIO.setup("P9_14", GPIO.IN)
-GPIO.setup("P9_15", GPIO.IN)
-
 
 # EOF
 thread: Thread | None = None
@@ -48,42 +44,7 @@ def background_thread():
         try:
             with thread_lock:
                 # GET SENSOR DATA
-                # BBBW4 Clip 3
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad0',
-                    'value': ADC.read("P9_40")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad1',
-                    'value': ADC.read("P9_40")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad2',
-                    'value': ADC.read("P9_40")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad3',
-                    'value': ADC.read("P9_40")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad4',
-                    'value': ADC.read("P9_40")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad5',
-                    'value': ADC.read("P9_40")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'keypad6',
-                    'value': ADC.read("P9_40")
-                })
-
+                
                 # BBBW4 Clip 1
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'IR',
