@@ -47,7 +47,7 @@ def background_thread():
                 
                 # BBBW4 Clip 1
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'IR',
+                    'sensor': 'infra',
                     'value': ADC.read("P9_38")
                 })
             
