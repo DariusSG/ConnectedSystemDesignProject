@@ -12,6 +12,7 @@ import busio
 import digitalio
 import adafruit_ssd1306
 from board import SCL, SDA
+import Adafruit_BBIO.ADC as ADC
 
 CONFIG_FILE = "./CSDP.conf"
 DEFAULT_CONFIG = {
@@ -93,6 +94,7 @@ InternalAlarm = False
 ResetStatus = False
 clients = []
 
+ADC.setup()
 keyInput = KeyInput()
 
 
@@ -243,7 +245,7 @@ class OLEDThread(Thread):
         retry_count, flagDisplay, Timeout = 0, False, None
         while not self.stopSignal.is_set():
             with thread_lock:
-                keyInput.write_input('value')
+                keyInput.write_input(ADC.read("P9_38")
                 if ResetStatus:
                     oledDriver.OLED_Display('Reset In\nProgress')
                 elif currentState == 'StandBy':
