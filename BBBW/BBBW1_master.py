@@ -90,6 +90,7 @@ CompartmentState = {
     },
 }
 InternalAlarm = False
+ResetStatus = False
 clients = []
 
 keyInput = KeyInput()
@@ -156,22 +157,45 @@ def BBB4_Rx(RxData: dict):
 # UI EVENT
 @socketio.event
 def BBB1_Rx(RxData: dict):
+    global rawconfig, CompartmentState, ResetStatus
     with thread_lock:
         if RxData['act'] == 'get':
-            if RxData['sensor'] in SensorState.keys():
+            if RxData['key'] == 'state':
+                boxID = RxData['value']['boxID']
                 socketio.emit("UI_Tx", {
-                    "state": RxData['sensor'],
-                    "value": SensorState[RxData['sensor']]
+                    "act": 'update',
+                    "key": 'state',
+                    'value': {
+                        'boxID': boxID,
+                        'Temp': CompartmentState[boxID]['Temp'],
+                        'DoorOpen': CompartmentState[boxID]['DoorOpen'],
+                        'Weight': (sum(CompartmentState[boxID]['Weight'].getSlice(0,25)) / 25)
+                    }
                 })
-                return 200
+            elif RxData['key'] == 'alarm_pin':
+                if RxData['value']['prev'] == rawconfig.getValue("USER", "Password"):
+                    socketio.emit("UI_Tx", {
+                        "act": 'update',
+                        "key": 'alarm_RESET'
+                    })
+                    ResetStatus = True
+                else:
+                    return 400
             else:
                 return 415
         elif RxData['act'] == 'update':
-            if RxData['key'] == 'Password':
-                rawconfig.writeValue("USER", "Password", RxData['value'])
-            pass  # TODO: add UI Related Values
+            if RxData['key'] == 'password':
+                if RxData['value'] == rawconfig.getValue("USER", "Password"):
+                    rawconfig.writeValue("USER", "Password", RxData['value']['new'])
+                else:
+                    return 400
+            elif RxData['key'] == 'state':
+                boxID = RxData['value']['boxID']
+                CompartmentState[boxID]['Temp'] = RxData['value']['Temp']
+                CompartmentState[boxID]['DoorOpen'] = RxData['value']['DoorOpen']
         else:
             return 501
+        return 200
 
 
 def CheckAlarmStatus():
@@ -182,13 +206,30 @@ def CheckAlarmStatus():
         if TiltDistance < SensorState["infra"]:
             InternalAlarm = True
         for Compartment in CompartmentState.keys():
-            if SensorState.get(f'reed{Compartment}') != CompartmentState[Compartment]['DoorOpen']:
+            if (not CompartmentState[Compartment]['DoorOpen']) and SensorState.get(f'reed{Compartment}') != CompartmentState[Compartment]['DoorOpen']:
                 CompartmentState[Compartment]['Alarm'] = True
                 InternalAlarm = True
             if (sum(CompartmentState[Compartment]['Weight'].getSlice(0,25))/25) < (sum(CompartmentState[Compartment]['Weight'].getSlice(25,50))/25):
                 CompartmentState[Compartment]['Alarm'] = True
                 InternalAlarm = True
             CompartmentState[Compartment]['Alarm'] = False
+
+        if InternalAlarm:
+            socketio.emit("UI_Rx", {
+                "act": "update",
+                "key": "alarm"
+            })
+
+
+def Recalibrate():
+    global InternalAlarm, ResetStatus
+    InternalAlarm = False
+    rawconfig.writeValue("USER", "TiltDistance", SensorState['infra'])
+    socketio.sleep(0.25)
+    for Compartment in CompartmentState.keys():
+        CompartmentState[Compartment]['Weight'] = FixedArray(100)
+        socketio.sleep(0.25)
+    ResetStatus = False
 
 
 class OLEDThread(Thread):
@@ -197,13 +238,15 @@ class OLEDThread(Thread):
         self.stopSignal: Event = Event()
 
     def run(self):
-        global InternalAlarm, keyInput, oledDriver
+        global InternalAlarm, keyInput, oledDriver, ResetStatus
         currentState, alarm_cycle, oled_pass = 'StandBy', [], ''
         retry_count, flagDisplay, Timeout = 0, False, None
         while not self.stopSignal.is_set():
             with thread_lock:
                 keyInput.write_input('value')
-                if currentState == 'StandBy':
+                if ResetStatus:
+                    oledDriver.OLED_Display('Reset In\nProgress')
+                elif currentState == 'StandBy':
                     oledDriver.TemperatureCycle()
                     keyInput.waiting = True
                     key = keyInput.getInput()
@@ -235,9 +278,11 @@ class OLEDThread(Thread):
                                 flagDisplay = False
                                 if oled_pass == rawconfig.getValue('USER', 'Password'):
                                     currentState, oled_pass, Timeout = "TempSet", '', time.thread_time()
-                                    InternalAlarm = False
+                                    if InternalAlarm:
+                                        ResetStatus = True
                                     for Compartment in CompartmentState.keys():
                                         CompartmentState[Compartment]['Alarm'] = False
+                                    socketio.sleep(0.5)
                                     oledDriver.AGDisplay(True)
                                 else:
                                     retry_count += 1
@@ -276,8 +321,11 @@ class ApplicationThread(Thread):
     def run(self):
         global SensorState, CompartmentState, InternalAlarm
         while not self.stopSignal.is_set():
-            CheckAlarmStatus()
-            socketio.emit("UI_Tx", {
+            if ResetStatus:
+                Recalibrate()
+            elif not InternalAlarm:
+                CheckAlarmStatus()
+            socketio.emit("UI_Rx", {
                 "state": "",
                 "value": ""
             })
