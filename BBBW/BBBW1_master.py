@@ -13,6 +13,7 @@ import digitalio
 import adafruit_ssd1306
 from board import SCL, SDA
 import Adafruit_BBIO.ADC as ADC
+import Adafruit_BBIO.PWM as PWM
 
 CONFIG_FILE = "./CSDP.conf"
 DEFAULT_CONFIG = {
@@ -95,6 +96,7 @@ ResetStatus = False
 clients = []
 
 ADC.setup()
+PWM.start("P8_19", 50)
 keyInput = KeyInput()
 
 
@@ -328,10 +330,14 @@ class ApplicationThread(Thread):
                 Recalibrate()
             elif not InternalAlarm:
                 CheckAlarmStatus()
-            socketio.emit("UI_Rx", {
-                "state": "",
-                "value": ""
-            })
+            if InternalAlarm:
+                PWM.start("P8_19", 50)
+                PWM.set_frequency("P8_19", 1000)
+                print("Alarm")
+                socketio.sleep(0.1)
+                PWM.set_frequency("P8_19", 2000)
+                socketio.sleep(0.1)
+                PWM.stop("P8_19")
             socketio.sleep(0.25)
 
     def stop(self):
