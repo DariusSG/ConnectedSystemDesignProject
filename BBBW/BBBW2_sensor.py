@@ -1,43 +1,36 @@
+import time
+from typing import Optional
 from threading import Lock, Thread
 
 import socketio
 
 import Adafruit_BBIO.ADC as ADC
-
 import Adafruit_BBIO.GPIO as GPIO
 
 SERVER_IP = "http://192.168.12.2:5000"
 SENSOR_NODE = "BBB2"
-REFRESH = 2
+REFRESH = 0.5
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 
 # GPIO SETUP
 ADC.setup()
 GPIO.setup("P8_10", GPIO.IN)
+GPIO.setup("P9_42", GPIO.IN)
 
 # EOF
-thread: Thread | None = None
+thread: Optional[Thread] = None
 thread_lock = Lock()
 
 
 @sio.event
 def connect():
-    global thread
     print('Connection established.')
-    with thread_lock:
-        if thread is None:
-            thread = sio.start_background_task(background_thread)
-            thread.daemon = True
 
 
 @sio.event
 def disconnect():
-    global thread
     print('Disconnected from server.')
-    with thread_lock:
-        if thread is not None:
-            thread = None
 
 
 def background_thread():
@@ -52,37 +45,34 @@ def background_thread():
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'reed2',
-                    'value': GPIO.input("P9_38")
+                    'value': GPIO.input("P9_42")
                 })
                 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'force1',
-                    'value': ADC.read("P9_39")
+                    'value': ADC.read("P9_38")
                 })
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
                     'sensor': 'force2',
-                    'value': ADC.read("P9_37")
+                    'value': ADC.read("P9_40")
                 })
         
-        except:
+        except Exception as e:
             print('Unable to transmit data.')
+            print(e)
             pass
-        sio.sleep(REFRESH)
+        time.sleep(REFRESH)
 
 
-def start_server():
+if __name__ == '__main__':
     while True:
         try:
-            sio.connect(SERVER_IP, headers={"SENSOR_NODE":SENSOR_NODE})
+            sio.connect(SERVER_IP)
             break
         except KeyboardInterrupt:
             break
         except:
             print("Trying to connect to the server.")
             pass
-    sio.wait()
-
-
-if __name__ == '__main__':
-    start_server()
+    background_thread()

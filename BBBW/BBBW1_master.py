@@ -2,31 +2,31 @@ import time
 from typing import Optional
 from threading import Lock, Event, Thread
 
-from socketio import Server, WSGIApp
+from flask_socketio import SocketIO
 from flask import Flask
 
-from BBBW1_utils import FixedArray, RawConfig, KeyInput, OLED
+from BBBW1_utils import FixedArray, RawConfig, KeyInput, OLED, SSD1306OLED
 
 import board
 import busio
 import digitalio
-import adafruit_ssd1306
 from board import SCL, SDA
 import Adafruit_BBIO.ADC as ADC
 import Adafruit_BBIO.PWM as PWM
 
+
 CONFIG_FILE = "./CSDP.conf"
 DEFAULT_CONFIG = {
     "TiltDistance": 0,
-    "Password": "0000"
+    "Password": "1111"
 }
 rawconfig = RawConfig(CONFIG_FILE)
 rawconfig.load_default(DEFAULT_CONFIG)
 
-socketio = Server(logger=True, async_mode='threading')
 app = Flask(__name__)
-app.wsgi_app = WSGIApp(socketio, app.wsgi_app)
-app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
+
+
 
 thread: Optional['ApplicationThread'] = None
 oledThread: Optional['OLEDThread'] = None
@@ -70,25 +70,25 @@ CompartmentState = {
         "Temp": 0,
         "Alarm": False,
         "DoorOpen": False,
-        "Weight": FixedArray(100)
+        "Weight": FixedArray(20)
     },
     2: {
         "Temp": 0,
         "Alarm": False,
         "DoorOpen": False,
-        "Weight": FixedArray(100)
+        "Weight": FixedArray(20)
     },
     3: {
         "Temp": 0,
         "Alarm": False,
         "DoorOpen": False,
-        "Weight": FixedArray(100)
+        "Weight": FixedArray(20)
     },
     4: {
         "Temp": 35,
         "Alarm": False,
         "DoorOpen": False,
-        "Weight": FixedArray(100)
+        "Weight": FixedArray(20)
     },
 }
 InternalAlarm = False
@@ -97,37 +97,36 @@ clients = []
 
 ADC.setup()
 PWM.start("P8_19", 50)
+PWM.stop("P8_19")
 keyInput = KeyInput()
 
 
-def OLEDClickInit():
-    Pin_DC = digitalio.DigitalInOut(board.P9_16)
-    Pin_DC.direction = digitalio.Direction.OUTPUT
-    Pin_DC.value = False
-    Pin_RESET = digitalio.DigitalInOut(board.P9_23)
-    Pin_RESET.direction = digitalio.Direction.OUTPUT
-    Pin_RESET.value = True
-    L_I2c = busio.I2C(SCL, SDA)
-    return L_I2c
+Pin_DC = digitalio.DigitalInOut(board.P9_16)
+Pin_DC.direction = digitalio.Direction.OUTPUT
+Pin_DC.value = False
 
+i2c = busio.I2C(SCL, SDA)
+while not i2c.try_lock():
+    pass
 
-G_I2c = OLEDClickInit()
-Display = adafruit_ssd1306.SSD1306_I2C(64, 32, None, i2c_bus=G_I2c, i2c_address=0x3C)
-oledDriver = OLED(Display)
+reset = digitalio.DigitalInOut(board.P9_23)
+reset.direction = digitalio.Direction.OUTPUT
+
+oledDriver = OLED(SSD1306OLED(reset, i2c, 0x3C, 96, 40))
 
 
 def vaildateRxData(board, RxData: dict):
     board_config = SensorConfig.get(board)
     if RxData["sensor"] not in board_config["sensor"]:
-        socketio.logger.warning(f'Unknown Sensor {RxData["sensor"]} sent from BBB2')
+        app.logger.warning(f'Unknown Sensor {RxData["sensor"]} sent from BBB2')
         return False
     if isinstance(board_config["value"][RxData["sensor"]], list):
         if RxData["value"] not in board_config["value"][RxData["sensor"]]:
-            socketio.logger.warning(f'Unknown Value from Sensor {RxData["sensor"]} sent from BBB2')
+            app.logger.warning(f'Unknown Value from Sensor {RxData["sensor"]} sent from BBB2')
             return False
     elif isinstance(board_config["value"][RxData["sensor"]], type):
         if isinstance(RxData["value"], board_config["value"][RxData["sensor"]]):
-            socketio.logger.warning(f'Unknown Value from Sensor {RxData["sensor"]} sent from BBB2')
+            app.logger.warning(f'Unknown Value from Sensor {RxData["sensor"]} sent from BBB2')
             return False
     return True
 
@@ -166,7 +165,7 @@ def BBB1_Rx(RxData: dict):
         if RxData['act'] == 'get':
             if RxData['key'] == 'state':
                 boxID = RxData['value']['boxID']
-                weight = sum(CompartmentState[boxID]['Weight'].getSlice(0,25)) / 25
+                weight = sum(CompartmentState[boxID]['Weight'].getSlice(0,5)) / 5
                 socketio.emit("UI_Tx", {
                     "act": 'update',
                     "key": 'state',
@@ -206,30 +205,41 @@ def BBB1_Rx(RxData: dict):
 def CheckAlarmStatus():
     global CompartmentState, InternalAlarm
     with thread_lock:
-        TiltDistance = rawconfig.getValue("USER", "TiltDistance")
-        InternalAlarm = False
-        if TiltDistance < SensorState["infra"]:
-            InternalAlarm = True
-        for Compartment in CompartmentState.keys():
-            if (not CompartmentState[Compartment]['DoorOpen']) and SensorState.get(f'reed{Compartment}') != CompartmentState[Compartment]['DoorOpen']:
-                CompartmentState[Compartment]['Alarm'] = True
-                InternalAlarm = True
-            if (sum(CompartmentState[Compartment]['Weight'].getSlice(0,25))/25) < (sum(CompartmentState[Compartment]['Weight'].getSlice(25,50))/25):
-                CompartmentState[Compartment]['Alarm'] = True
-                InternalAlarm = True
-            CompartmentState[Compartment]['Alarm'] = False
+        try:
+            TiltDistance = int(rawconfig.getValue("USER", "TiltDistance"))
+            InternalAlarm = False
+            # if TiltDistance < SensorState["infra"]:
+            #     print("Alarm Active From Infra")
+            #     InternalAlarm = True
+            for Compartment in CompartmentState.keys():
+                CompartmentState[Compartment]['Alarm'] = False
+                if Compartment in [3,4]:
+                    continue
+                if (not CompartmentState[Compartment]['DoorOpen']) and SensorState.get(f'reed{Compartment}') != CompartmentState[Compartment]['DoorOpen']:
+                    CompartmentState[Compartment]['Alarm'] = True
+                    InternalAlarm = True
+                    print(f"Alarm Active From Reed {Compartment}")
+                prev_val = round(1000 * (sum(CompartmentState[Compartment]['Weight'].getSlice(0, 5))/5), 5)
+                new_val = round(1000 * (sum(CompartmentState[Compartment]['Weight'].getSlice(5,10))/5), 5)
+                print(f'{Compartment}', prev_val, new_val)
+                if (new_val - prev_val) < -100:
+                    CompartmentState[Compartment]['Alarm'] = True
+                    InternalAlarm = True
+                    print(f"Alarm Active From Force {Compartment}")
 
-        if InternalAlarm:
-            socketio.emit("UI_Rx", {
-                "act": "update",
-                "key": "alarm"
-            })
+            if InternalAlarm:
+                socketio.emit("UI_Rx", {
+                    "act": "update",
+                    "key": "alarm"
+                })
+        except:
+            pass
 
 
 def Recalibrate():
     global InternalAlarm, ResetStatus
     InternalAlarm = False
-    rawconfig.writeValue("USER", "TiltDistance", SensorState['infra'])
+    rawconfig.writeValue("USER", "TiltDistance", str(SensorState['infra']))
     socketio.sleep(0.25)
     for Compartment in CompartmentState.keys():
         CompartmentState[Compartment]['Weight'] = FixedArray(100)
@@ -247,6 +257,7 @@ class OLEDThread(Thread):
         currentState, alarm_cycle, oled_pass = 'StandBy', [], ''
         retry_count, flagDisplay, Timeout = 0, False, None
         while not self.stopSignal.is_set():
+            print(currentState, alarm_cycle, oled_pass, retry_count, flagDisplay, Timeout)
             with thread_lock:
                 keyInput.write_input(ADC.read("P9_38"))
                 if ResetStatus:
@@ -325,7 +336,13 @@ class ApplicationThread(Thread):
 
     def run(self):
         global SensorState, CompartmentState, InternalAlarm
+        Recalibrate()
+        socketio.sleep(1)
         while not self.stopSignal.is_set():
+            for boxID in CompartmentState.keys():
+                if boxID in [3,4]:
+                    continue
+                CompartmentState[boxID]['Weight'].add(SensorState[f'force{boxID}'])
             if ResetStatus:
                 Recalibrate()
             elif not InternalAlarm:
@@ -350,35 +367,30 @@ def ensureClients():
         for sid, sensor_node in clients:
             if sensor_node in ensure_list:
                 ensure_list.remove(sensor_node)
-            else:
-                return False
-    return True
+        if len(ensure_list) == 0:
+            return True
+        else:
+            return False
 
 
-@socketio.event
-def connect(sid, environ, auth):
+@socketio.on('connect')
+def connect():
     global thread, oledThread
-    print('Connection established.')
+    print('Connection established')
     with thread_lock:
-        if sid not in clients:
-            clients.append((sid, environ['SENSOR_NODE']))
-        if thread is None and oledThread is None and ensureClients():
+        if thread is None and oledThread is None:
             thread = ApplicationThread()
             oledThread = OLEDThread()
             thread.start()
             oledThread.start()
 
 
-@socketio.event
-def disconnect(sid):
+@socketio.on('disconnect')
+def disconnect():
     global thread, oledThread
-    if sid in clients:
-        clients.remove(sid)
-    if not ensureClients and thread is not None and oledThread is not None:
-        thread.stop()
-        oledThread.stop()
-        thread, oledThread = None, None
+    print('Disconnected from server.')
+
 
 
 if __name__ == '__main__':
-    app.run(host='192.168.12.220',threaded=True)
+    socketio.run(app, host='192.168.12.2')
