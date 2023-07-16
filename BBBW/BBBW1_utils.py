@@ -80,15 +80,6 @@ class OLED:
         self.standby_cycle = 1
 
     def OLED_Display(self, text, fill=" ",coords=(0, 1)):
-        # ImageObj = self.Image.new("1", (96, 40))
-        # Draw = self.ImageDraw.Draw(ImageObj)
-        # Draw.rectangle((0, 1, 96 - 1, 39 - 1), outline=1, fill=0)
-        # Font = self.ImageFont.load_default()
-        # if multiline:
-        #     Draw.multiline_text(coords, text, font=Font, fill=1)
-        # else:
-        #     Draw.text(coords, text, font=Font, fill=1)
-        # self.loadImage(ImageObj)
         self.Display.rect(0, 1, 96, 39, 1, False)
         x, y = coords
         x_offset, y_offset = 3, 5
@@ -120,7 +111,7 @@ class OLED:
         return self.OLED_Display(Text)
 
     def AlarmDisplay(self):
-        Text = "Alarm"
+        Text = ["Alarm"]
         return self.OLED_Display(Text)
 
     def TemperatureCycle(self):
@@ -149,9 +140,10 @@ class OLED:
 
 class KeyInput:
     def __init__(self):
-        self.current_key: Optional[str] = ""
-        self.previous_key = ""
-        self.waiting = False
+        self.current_key: Optional[str] = None
+        self.keyHolding: Optional[str] = None
+        self.key_press: Optional[str] = None
+        self.keyDown: bool = False
 
     def write_input(self, value) -> None:
         if 0.00 <= value < 0.10:
@@ -169,12 +161,20 @@ class KeyInput:
         elif 0.90 < value < 1.10:
             self.current_key = "T1"
 
-    def getInput(self) -> str:
-        if self.waiting and self.previous_key != self.current_key:
-            result = self.previous_key
-            self.previous_key = "T0"
-            self.waiting = False
-            return result
+        if (self.current_key is not None) and (self.keyHolding is None) and (not self.keyDown):
+            self.keyHolding = self.current_key
+            self.keyDown = True
+
+        elif (self.current_key is None) and (self.keyHolding is not None) and self.keyDown:
+            self.key_press = self.keyHolding
+            self.keyDown = False
+
+    def getInput(self) -> Optional[str]:
+        return self.current_key
+
+    def getKeyPress(self) -> Optional[str]:
+        result, self.key_press = self.key_press, None
+        return result
 
 
 
