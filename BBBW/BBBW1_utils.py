@@ -146,6 +146,7 @@ class KeyInput:
         self.keyDown: bool = False
 
     def write_input(self, value) -> None:
+        print(self.current_key, self.keyDown, self.key_press, self.keyHolding)
         if 0.00 <= value < 0.10:
             self.current_key = None
         elif 0.16 < value < 0.18:
@@ -167,6 +168,7 @@ class KeyInput:
 
         elif (self.current_key is None) and (self.keyHolding is not None) and self.keyDown:
             self.key_press = self.keyHolding
+            self.keyHolding = None
             self.keyDown = False
 
     def getInput(self) -> Optional[str]:

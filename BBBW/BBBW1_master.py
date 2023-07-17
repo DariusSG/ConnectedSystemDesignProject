@@ -319,6 +319,7 @@ class OLEDThread(Thread):
         while not self.stopSignal.is_set():
             print(self.currentState, self.alarm_cycle, self.oled_pass, self.retry_count, self.flagDisplay)
             with thread_lock:
+                keyInput.write_input(ADC.read("P9_38"))
                 self.runState()
                 oledDriver.ShowDisplay()
             socketio.sleep(0.25)
@@ -337,7 +338,6 @@ class ApplicationThread(Thread):
         Recalibrate()
         socketio.sleep(1)
         while not self.stopSignal.is_set():
-            keyInput.write_input(ADC.read("P9_38"))
             for boxID in CompartmentState.keys():
                 if boxID in [3,4]:
                     continue
