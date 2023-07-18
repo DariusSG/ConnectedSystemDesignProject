@@ -1,3 +1,110 @@
+const socket = io('https://192.168.12.2:5000')
+const STATE = new InternalState();
+
+const overlay = document.querySelector("#overlay");
+
+socket.on('UI_Tx', (RxData) => {
+    if (RxData.act === 'update') {
+        switch (RxData.key) {
+            case 'state':
+                STATE.updateBox(RxData.value.BoxID, {
+                    Temp: RxData.value.Temp,
+                    DoorFalse: RxData.value.DoorFalse,
+                    Weight: RxData.value.Weight
+                })
+                break;
+            case 'timeout':
+                STATE.timeout = RxData.value
+                break;
+
+            case 'alarm':
+                STATE.alarm = true
+                displayAlarm()
+                break;
+        }
+    }
+})
+
+function SIOsendState(boxID, TempSet, DoorOpen) {
+    socket.emit('BBB1_Rx', {
+        'act': 'update',
+        'key': 'state',
+        'value': {
+            'BoxID': boxID,
+            'Temp': TempSet,
+            'DoorOpen': DoorOpen
+        }
+    }, socketio_callback)
+}
+
+function SIOgetState() {
+    socket.emit('BBB1_Rx', {
+        'act': 'get',
+        'key': 'state',
+        'value': 1
+    }, socketio_callback)
+    socket.emit('BBB1_Rx', {
+        'act': 'get',
+        'key': 'state',
+        'value': 2
+    }, socketio_callback)
+    socket.emit('BBB1_Rx', {
+        'act': 'get',
+        'key': 'state',
+        'value': 3
+    }, socketio_callback)
+    socket.emit('BBB1_Rx', {
+        'act': 'get',
+        'key': 'state',
+        'value': 4
+    }, socketio_callback)
+}
+
+function SIOsendPIN(prev_pin, new_pin) {
+    socket.emit('BBB1_Rx', {
+        'act': 'update',
+        'key': 'password',
+        'value': {
+            'prev': prev_pin,
+            'new': new_pin
+        }
+    }, (status_code) => {
+        socketio_callback(status_code);
+        if (status_code === 200)
+            showToast("Pin Changed Successfully")
+    })
+}
+
+function ResetPIN(pin, content) {
+    const pin_container = content.querySelector('#pin_input_container');
+    const new_pin = pin_container.getAttribute('pin-input');
+    SIOsendPIN(pin, new_pin);
+}
+
+function SIOstopAlarm(pin) {
+    socket.emit('BBB1_Rx', {
+        'act': 'update',
+        'key': 'alarm_pin',
+        'value': pin
+    }, (status_code) => {
+        socketio_callback(status_code);
+        if (status_code === 200)
+            showToast("Alarm Stop")
+    })
+}
+
+function SIOreset(pin) {
+    socket.emit('BBB1_Rx', {
+        'act': 'update',
+        'key': 'alarm_pin',
+        'value': pin
+    }, (status_code) => {
+        socketio_callback(status_code);
+        if (status_code === 200)
+            showToast("Reset Sent Successfully")
+    })
+}
+
 class ModalDialog {
     constructor(elementID) {
         this.modal = document.getElementById(elementID);
@@ -9,20 +116,16 @@ class ModalDialog {
         modal_save.addEventListener("click", () => this.#saveConfig());
     }
 
-    setBoxID(box_id, locked, empty, tempSet) {
+    setBoxID(box_id) {
         this.boxID = box_id
-        this.locked = locked
-        this.empty = empty
-        this.tempSet = tempSet
+        let { Temp, DoorOpen, Weight} = STATE.getBox(1);
+        this.locked = !DoorOpen;
+        this.empty = (Weight < 10);
+        this.tempSet = Temp;
     }
 
     #saveConfig() {
-        const boxstate = {
-            "boxID":  this.boxID,
-            "doorOpen": !this.locked,
-            "tempSet": this.tempSet
-        }
-        // Send over socketIO
+        SIOsendState(this.boxID, !this.locked, this.tempSet)
     }
 
     #updateTempState(modal, tempSet) {
@@ -106,9 +209,196 @@ class ModalDialog {
     }
 }
 
+class NavbarDialog {
+    constructor(elementID) {
+        this.modal = document.getElementById(elementID);
+        this.modal_content = this.modal.querySelector('#content');
+        this.modal_title = this.modal.querySelector('#title');
+        this.command_func = null;
+
+        const modal_close = this.modal.querySelector("#modal-close");
+        modal_close.addEventListener("click", () => this.closeModal());
+
+        this.modal_execute = this.modal.querySelector("#modal-execute");
+        this.modal_execute.addEventListener("click", () => this.executeCommand());
+
+        const pin_container = this.modal.querySelectorAll('#pin_input_container');
+        pin_container.forEach((container, _) => {
+            const pin_input = container.querySelectorAll('#pin_input');
+            pin_input.forEach((num, index) => {
+                num.dataset.id = index.toString();
+
+                num.addEventListener('mousewheel', (e)=>{
+                    e.preventDefault();
+                })
+
+                num.addEventListener('keyup', (e) => {
+                    if (num.value.length === 1) {
+                        if (pin_input[pin_input.length - 1].value.length !== 1)
+                            pin_input[parseInt(num.dataset.id) + 1].focus()
+                        else {
+                            let pin = "";
+                            pin_input.forEach((num, _) => {
+                                pin += num.value.toString()
+                            });
+                            container.setAttribute('pin-input', pin);
+                        }
+
+                    } else {
+                        console.log(e);
+                        if (e.key === 'Backspace') {
+                            if (pin_input[pin_input.length - 1].value.length !== 1)
+                                pin_input[parseInt(num.dataset.id) - 1].focus()
+                        }
+                    }
+                })
+            })
+        })
+    }
+
+    setModal(num) {
+        switch (num) {
+            case 1:
+                this.modal_title.textContent = "Lock Timeout";
+                this.modal_content.innerHTML = (
+                    '<p>^^^ Enter Your PIN Above ^^^</p>\n' +
+                    '<p>Enter Lock Timeout in Seconds:</p>\n' +
+                    '<input type="number" id="lock-timeout" min="10" max="60" value="10" required>'
+                );
+                this.modal_execute.textContent = "Change";
+                return
+            case 2:
+                this.modal_title.textContent = "Calibration";
+                this.modal_content.innerHTML = (
+                    '<p>^^^ Enter Your PIN Above to Reset ^^^</p>'
+                );
+                this.modal_execute.textContent = "Calibrate";
+                this.command_func = SIOreset;
+                return
+            case 3:
+                this.modal_title.textContent = "Reset PIN";
+                this.modal_content.innerHTML = (
+                    '<p>^^^ Enter Your Old PIN Above ^^^</p>'+
+                    '<div id="pin_input_container">\n' +
+                    '<input type="number" id="pin_input" maxlength="1" min="1" max="6" required>\n' +
+                    '<input type="number" id="pin_input" maxlength="1" min="1" max="6" required>\n' +
+                    '<input type="number" id="pin_input" maxlength="1" min="1" max="6" required>\n' +
+                    '<input type="number" id="pin_input" maxlength="1" min="1" max="6" required>\n' +
+                    '</div>'+
+                    '<p>^^^ Enter Your New PIN Above ^^^</p>'
+                );
+                this.modal_execute.textContent = "Reset";
+                this.command_func = ResetPIN
+                return
+            case 4:
+                this.modal_title.textContent = "Reset Alarm";
+                this.modal_content.innerHTML = (
+                    '<p>^^^ Enter Your PIN Above to Reset ^^^</p>'
+                );
+                this.modal_execute.textContent = "Reset";
+                this.command_func = SIOstopAlarm;
+                return
+        }
+    }
+
+    executeCommand() {
+        const pin_input = this.modal.querySelectorAll('#pin_input_container')[0].cloneNode(true);
+        let pin = pin_input.getAttribute('pin-input');
+        this.command_func(pin, this.modal_content.cloneNode(true))
+        this.closeModal()
+    }
+
+    closeModal() {
+        const pin_input = this.modal.querySelectorAll('#pin_input_container');
+        pin_input[0].removeAttribute('pin-input');
+        const clear_input = pin_input[0].querySelectorAll('#pin_input');
+        clear_input.forEach((num, _) => {
+            num.value = '';
+        })
+        this.modal_content.innerHTML = '';
+        this.modal.close()
+    }
+
+    showModal() {
+        const pin_container = this.modal.querySelectorAll('#pin_input_container');
+        pin_container.forEach((container, index) => {
+            if (index === 0) {
+                container.removeAttribute('pin-input');
+                const clear_input = container.querySelectorAll('#pin_input');
+                clear_input.forEach((num, _) => {
+                    num.value = '';
+                })
+                return
+            }
+            const pin_input = container.querySelectorAll('#pin_input');
+            pin_input.forEach((num, index) => {
+                num.dataset.id = index.toString();
+
+                num.addEventListener('mousewheel', (e)=>{
+                    e.preventDefault();
+                })
+
+                num.addEventListener('keyup', (e) => {
+                    if (num.value.length === 1) {
+                        if (pin_input[pin_input.length - 1].value.length !== 1)
+                            pin_input[parseInt(num.dataset.id) + 1].focus()
+                        else {
+                            let pin = "";
+                            pin_input.forEach((num, _) => {
+                                pin += num.value.toString()
+                            });
+                            container.setAttribute('pin-input', pin);
+                        }
+
+                    } else {
+                        console.log(e);
+                        if (e.key === 'Backspace') {
+                            if (pin_input[pin_input.length - 1].value.length !== 1)
+                                pin_input[parseInt(num.dataset.id) - 1].focus()
+                        }
+                    }
+                })
+            })
+        })
+        return this.modal.showModal();
+    }
+}
+
+const BoxModal = new ModalDialog("modal-box");
+const navbarModal = new NavbarDialog("navbar-box");
 const projectIMGCanvas = document.getElementById('project-model');
 const projectIMGContext = projectIMGCanvas.getContext('2d');
-const BoxModal = new ModalDialog("modal-box");
+
+const lock_timout = document.querySelector('#navbar-cell-1');
+const reset_calib = document.querySelector('#navbar-cell-2');
+const pin_change = document.querySelector('#navbar-cell-3');
+
+let STATEUPDATE = setInterval(() => {
+    SIOgetState();
+}, 2000);
+
+
+function displayAlarm() {
+    const alarm = overlay.querySelector('#alarm');
+    overlay.classList.add("display");
+	alarm.classList.add("display");
+    overlay.addEventListener('click', hideAlarm)
+    // to stop loading after some time
+    setTimeout(() => {
+        const alarm = overlay.querySelector('#alarm');
+        overlay.classList.remove("display");
+        alarm.classList.remove("display");
+    }, 50000);
+}
+
+function hideAlarm() {
+    navbarModal.setModal(4);
+    navbarModal.showModal();
+    const alarm = overlay.querySelector('#alarm');
+    overlay.classList.remove("display");
+	alarm.classList.remove("display");
+    overlay.removeEventListener('click', hideAlarm)
+}
 
 
 function loadImage(href, dx, dy, scale=1) {
@@ -142,20 +432,35 @@ projectIMGCanvas.addEventListener('click', function(e) {
     isIntersecting(e, 0,0,0,0);
 
     if (isIntersecting(e, 5, 142, 120, 85)) {
-        BoxModal.setBoxID(1, true, false, -25, 1);
+        BoxModal.setBoxID(1);
         console.log("Box 1 is clicked");
     }
     if (isIntersecting(e, 135, 140, 120, 85)) {
-        BoxModal.setBoxID(2, true, false, -25, 1);
+        BoxModal.setBoxID(2);
         console.log("Box 2 is clicked");
     }
     if (isIntersecting(e, 262, 140, 120, 85)) {
-        BoxModal.setBoxID(3, true, false, -25, 1);
+        BoxModal.setBoxID(3);
         console.log("Box 3 is clicked");
     }
     if (isIntersecting(e, 5, 235, 375, 90)) {
-        BoxModal.setBoxID(4, true, false, -25, 1);
+        BoxModal.setBoxID(4);
         console.log("Box 4 is clicked");
     }
     BoxModal.showModal()
+})
+
+lock_timout.addEventListener('click', ()=>{
+    navbarModal.setModal(1)
+    navbarModal.showModal()
+})
+
+reset_calib.addEventListener('click', ()=>{
+    navbarModal.setModal(2)
+    navbarModal.showModal()
+})
+
+pin_change.addEventListener('click', ()=>{
+    navbarModal.setModal(3)
+    navbarModal.showModal()
 })
