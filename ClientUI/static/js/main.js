@@ -1,5 +1,5 @@
-const socket = io('https://192.168.12.2:5000')
-const STATE = new InternalState();
+const socket = io('http://192.168.12.2:5000')
+let STATE = new InternalState();
 
 const overlay = document.querySelector("#overlay");
 
@@ -7,9 +7,14 @@ socket.on('UI_Tx', (RxData) => {
     if (RxData.act === 'update') {
         switch (RxData.key) {
             case 'state':
-                STATE.updateBox(RxData.value.BoxID, {
+                console.log(RxData.value.boxID, {
                     Temp: RxData.value.Temp,
-                    DoorFalse: RxData.value.DoorFalse,
+                    DoorOpen: RxData.value.DoorOpen,
+                    Weight: RxData.value.Weight
+                });
+                STATE.updateBox(RxData.value.boxID, {
+                    Temp: RxData.value.Temp,
+                    DoorOpen: RxData.value.DoorOpen,
                     Weight: RxData.value.Weight
                 })
                 break;
@@ -42,22 +47,22 @@ function SIOgetState() {
         'act': 'get',
         'key': 'state',
         'value': 1
-    }, socketio_callback)
+    })
     socket.emit('BBB1_Rx', {
         'act': 'get',
         'key': 'state',
         'value': 2
-    }, socketio_callback)
+    })
     socket.emit('BBB1_Rx', {
         'act': 'get',
         'key': 'state',
         'value': 3
-    }, socketio_callback)
+    })
     socket.emit('BBB1_Rx', {
         'act': 'get',
         'key': 'state',
         'value': 4
-    }, socketio_callback)
+    })
 }
 
 function SIOsendPIN(prev_pin, new_pin) {
@@ -83,7 +88,7 @@ function ResetPIN(pin, content) {
 
 function SIOstopAlarm(pin) {
     socket.emit('BBB1_Rx', {
-        'act': 'update',
+        'act': 'get',
         'key': 'alarm_pin',
         'value': pin
     }, (status_code) => {
@@ -95,7 +100,7 @@ function SIOstopAlarm(pin) {
 
 function SIOreset(pin) {
     socket.emit('BBB1_Rx', {
-        'act': 'update',
+        'act': 'get',
         'key': 'alarm_pin',
         'value': pin
     }, (status_code) => {
@@ -105,6 +110,27 @@ function SIOreset(pin) {
     })
 }
 
+function SIOChangeTimeout(pin, val) {
+    socket.emit('BBB1_Rx', {
+        'act': 'update',
+        'key': 'timeout',
+        'value': {
+            'pin': pin,
+            'timeout': val
+        }
+    }, (status_code) => {
+        socketio_callback(status_code);
+        if (status_code === 200)
+            showToast("Reset Sent Successfully")
+    })
+}
+
+function ChangeTimeout(pin, content) {
+    const timeout_input = content.querySelector('#lock-timeout');
+    const timeout_value = timeout_input.value;
+    SIOChangeTimeout(pin,timeout_value);
+}
+
 class ModalDialog {
     constructor(elementID) {
         this.modal = document.getElementById(elementID);
@@ -112,20 +138,21 @@ class ModalDialog {
         const modal_close = this.modal.querySelector("#modal-close");
         modal_close.addEventListener("click", () => this.modal.close());
 
-        const modal_save = this.modal.querySelector("#box-save-config");
+        const modal_save = this.modal.querySelector("#boxSave");
         modal_save.addEventListener("click", () => this.#saveConfig());
     }
 
     setBoxID(box_id) {
         this.boxID = box_id
-        let { Temp, DoorOpen, Weight} = STATE.getBox(1);
+        let { Temp, DoorOpen, Weight} = STATE.getBox(box_id);
         this.locked = !DoorOpen;
         this.empty = (Weight < 10);
         this.tempSet = Temp;
     }
 
     #saveConfig() {
-        SIOsendState(this.boxID, !this.locked, this.tempSet)
+        console.log("Hello");
+        SIOsendState(this.boxID, this.tempSet, !this.locked);
     }
 
     #updateTempState(modal, tempSet) {
@@ -266,6 +293,7 @@ class NavbarDialog {
                     '<input type="number" id="lock-timeout" min="10" max="60" value="10" required>'
                 );
                 this.modal_execute.textContent = "Change";
+                this.command_func = ChangeTimeout;
                 return
             case 2:
                 this.modal_title.textContent = "Calibration";
@@ -375,7 +403,7 @@ const pin_change = document.querySelector('#navbar-cell-3');
 
 let STATEUPDATE = setInterval(() => {
     SIOgetState();
-}, 2000);
+}, 1000);
 
 
 function displayAlarm() {

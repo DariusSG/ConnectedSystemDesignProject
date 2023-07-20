@@ -114,10 +114,10 @@ class OLED:
         Text = ["Alarm"]
         return self.OLED_Display(Text)
 
-    def TemperatureCycle(self):
+    def TemperatureCycle(self, lst):
         if self.standby_cycle == 4:
             self.standby_cycle = 1
-        self.TempDisplay(self.standby_cycle, 0)
+        self.TempDisplay(self.standby_cycle, lst[self.standby_cycle - 1])
         self.standby_cycle += 1
 
     def loadImage(self, imgOBJ, offset_coords):

@@ -23,9 +23,7 @@ rawconfig = RawConfig(CONFIG_FILE)
 rawconfig.load_default(DEFAULT_CONFIG)
 
 app = Flask(__name__)
-socketio = SocketIO(app)
-
-
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 thread: Optional['ApplicationThread'] = None
 oledThread: Optional['OLEDThread'] = None
@@ -90,6 +88,7 @@ CompartmentState = {
         "Weight": FixedArray(20)
     },
 }
+Timeout = 10
 InternalAlarm = False
 ResetStatus = False
 clients = []
@@ -134,18 +133,21 @@ def vaildateRxData(board, RxData: dict):
 @socketio.event
 def BBB2_Rx(RxData: dict):
     global SensorState
-    vaildateRxData("BBB2", RxData)
     with thread_lock:
-        if not InternalAlarm:
-            SensorState[RxData["sensor"]] = RxData["value"]
+        if RxData["sensor"] == 'all':
+            for data in RxData['value']:
+                vaildateRxData("BBB2", data)
+                SensorState[data["sensor"]] = data["value"]
 
 
 @socketio.event
 def BBB3_Rx(RxData: dict):
     global SensorState
-    vaildateRxData("BBB3", RxData)
     with thread_lock:
-        SensorState[RxData["sensor"]] = RxData["value"]
+        if RxData["sensor"] == 'all':
+            for data in RxData['value']:
+                vaildateRxData("BBB3", data)
+                SensorState[data["sensor"]] = data["value"]
 
 
 @socketio.event
@@ -159,12 +161,22 @@ def BBB4_Rx(RxData: dict):
 # UI EVENT
 @socketio.event
 def BBB1_Rx(RxData: dict):
-    global rawconfig, CompartmentState, ResetStatus
+    global rawconfig, CompartmentState, ResetStatus, Timeout
     with thread_lock:
         if RxData['act'] == 'get':
             if RxData['key'] == 'state':
-                boxID = RxData['value']['boxID']
+                boxID = RxData['value']
                 weight = sum(CompartmentState[boxID]['Weight'].getSlice(0,5)) / 5
+                print("UI_Tx", {
+                    "act": 'update',
+                    "key": 'state',
+                    'value': {
+                        'boxID': boxID,
+                        'Temp': CompartmentState[boxID]['Temp'],
+                        'DoorOpen': CompartmentState[boxID]['DoorOpen'],
+                        'Weight': weight
+                    }
+                })
                 socketio.emit("UI_Tx", {
                     "act": 'update',
                     "key": 'state',
@@ -193,9 +205,14 @@ def BBB1_Rx(RxData: dict):
                 else:
                     return 400
             elif RxData['key'] == 'state':
-                boxID = RxData['value']['boxID']
+                boxID = RxData['value']['BoxID']
                 CompartmentState[boxID]['Temp'] = RxData['value']['Temp']
                 CompartmentState[boxID]['DoorOpen'] = RxData['value']['DoorOpen']
+            elif RxData['key'] == 'timeout':
+                if RxData['value']['pin'] == rawconfig.getValue("USER", "Password"):
+                    Timeout = RxData['value']['timeout']
+                else:
+                    return 400
         else:
             return 501
         return 200
@@ -221,7 +238,7 @@ def CheckAlarmStatus():
                 new_val = round(1000 * (sum(CompartmentState[Compartment]['Weight'].getSlice(0, 5))/5), 5)
                 prev_val = round(1000 * (sum(CompartmentState[Compartment]['Weight'].getSlice(5,10))/5), 5)
                 print(f'{Compartment}', prev_val, new_val)
-                if (prev_val - new_val) > 400:
+                if (not CompartmentState[Compartment]['DoorOpen']) and ((prev_val - new_val) > 400):
                     CompartmentState[Compartment]['Alarm'] = True
                     InternalAlarm = True
                     print(f"Alarm Active From Force {Compartment}")
@@ -259,9 +276,9 @@ class OLEDThread(Thread):
     def runState(self):
         global InternalAlarm, keyInput, oledDriver, ResetStatus
         if ResetStatus:
-            oledDriver.OLED_Display('Reset In\nProgress')
+            oledDriver.OLED_Display(['Reset In','Progress'])
         elif self.currentState == 'StandBy':
-            oledDriver.TemperatureCycle()
+            oledDriver.TemperatureCycle([CompartmentState[Compartment]['Temp'] for Compartment in CompartmentState.keys()])
             if keyInput.getInput() is not None:
                 self.oled_pass, self.retry_count, self.currentState = '', 0, 'Admin'
                 return
@@ -280,7 +297,7 @@ class OLEDThread(Thread):
                 self.oled_pass, self.retry_count, self.currentState = '', 0, 'Admin'
         elif self.currentState == 'Admin':
             if self.retry_count == 5:
-                self.currentState, self.retry_count = 'Alarm', 0
+                self.currentState, self.retry_count = 'Timeout', 0
             else:
                 if len(self.oled_pass) == 4:
                     if self.flagDisplay:
@@ -312,8 +329,16 @@ class OLEDThread(Thread):
             CompartmentState[currentCompartment]['Temp'] = TempSet
             if keyInput.getInput() is not None:
                 self.currentState = "StandBy"
+        elif self.currentState == 'Timeout':
+            oledDriver.OLED_Display(['Timeout'], coords=(2,1))
+            oledDriver.ShowDisplay()
+            socketio.sleep(Timeout)
+            self.currentState = 'Admin'
         if self.currentState == 'StandBy' and InternalAlarm:
             self.currentState = 'Alarm'
+        elif self.currentState in ['TempSet'] and InternalAlarm:
+            ResetStatus = True
+
 
     def run(self):
         while not self.stopSignal.is_set():

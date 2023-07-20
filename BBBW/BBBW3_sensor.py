@@ -48,14 +48,17 @@ def background_thread():
                 elif GPIO.input("P9_15"):
                     keylock = 2
 
-                sio.emit(f'{SENSOR_NODE}_Rx', {
+                payload = [{
                     'sensor': 'keylock',
                     'value': keylock
-                })
+                },{
+                    'sensor': 'pot',
+                    'value': round((round(ADC.read("P9_37"),3) / 0.628), 3)
+                }]
 
                 sio.emit(f'{SENSOR_NODE}_Rx', {
-                    'sensor': 'pot',
-                    'value': ADC.read("P9_37")
+                    'sensor': 'all',
+                    'value': payload
                 })
         
         except:

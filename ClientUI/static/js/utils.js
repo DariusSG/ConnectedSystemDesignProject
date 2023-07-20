@@ -2,25 +2,25 @@ class InternalState {
     constructor() {
         this.box1 = {
             Temp: 0,
-            DoorOpen: 0,
+            DoorOpen: false,
             Weight: 0
         };
 
         this.box2 = {
             Temp: 0,
-            DoorOpen: 0,
+            DoorOpen: false,
             Weight: 0
         };
 
         this.box3 = {
             Temp: 0,
-            DoorOpen: 0,
+            DoorOpen: false,
             Weight: 0
         };
 
         this.box4 = {
             Temp: 0,
-            DoorOpen: 0,
+            DoorOpen: false,
             Weight: 0
         };
 
@@ -31,16 +31,16 @@ class InternalState {
     updateBox(boxID, newState) {
         switch (boxID) {
             case 1:
-                this.box1 = {...this.box1, newState};
+                this.box1 = newState;
                 break;
             case 2:
-                this.box2 = {...this.box2, newState};
+                this.box2 = newState;
                 break;
             case 3:
-                this.box3 = {...this.box3, newState};
+                this.box3 = newState;
                 break;
             case 4:
-                this.box4 = {...this.box4, newState};
+                this.box4 = newState;
                 break;
         }
     }
@@ -87,5 +87,6 @@ function socketio_callback(status_code) {
             break;
         case 200:
             showToast('Command Executed Successfully', false)
+            break;
     }
 }

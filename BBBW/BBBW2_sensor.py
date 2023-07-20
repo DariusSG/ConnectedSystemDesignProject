@@ -38,24 +38,23 @@ def background_thread():
         try:
             with thread_lock:
                 # GET SENSOR DATA
-                sio.emit(f'{SENSOR_NODE}_Rx', {
+                payload: list = [{
                     'sensor': 'reed1',
                     'value': GPIO.input("P8_10")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
+                }, {
                     'sensor': 'reed2',
-                    'value': GPIO.input("P9_42")
-                })
-                
-                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'value': GPIO.input("P8_10")
+                }, {
                     'sensor': 'force1',
                     'value': ADC.read("P9_38")
-                })
-
-                sio.emit(f'{SENSOR_NODE}_Rx', {
+                }, {
                     'sensor': 'force2',
                     'value': ADC.read("P9_40")
+                }]
+
+                sio.emit(f'{SENSOR_NODE}_Rx', {
+                    'sensor': 'all',
+                    'value': payload
                 })
         
         except Exception as e:
