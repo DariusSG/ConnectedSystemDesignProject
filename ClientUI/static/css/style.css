@@ -258,3 +258,43 @@ input[type='number']#lock-timeout {
   border: 2px solid lightslategrey;
   border-radius: .5rem;
 }
+
+div#overview {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+div#overview div.box-overview {
+  display: flex;
+  flex-direction: row;
+  margin: 5px 10px 0 0;
+  height: 50px;
+  position: relative;
+  bottom: 100px;
+  border: 2px solid black;
+  border-radius: 15px;
+  background-color: ghostwhite;
+}
+
+div#overview div.box-overview div span {
+  width: 50px;
+  text-align: center;
+  vertical-align: center;
+}
+
+div#overview div.box-overview div:has(span) {
+  min-width: 200px;
+  margin: auto 0 auto 10px;
+  vertical-align: center;
+}
+
+div#overview div.box-overview div#toggle-lock {
+  width: 25px;
+  background-size: 25px;
+  background-position: center;
+  background-repeat: no-repeat;
+  margin-right: 5px;
+}

@@ -326,6 +326,13 @@ class NavbarDialog {
                 this.modal_execute.textContent = "Reset";
                 this.command_func = SIOstopAlarm;
                 return
+            case 5:
+                this.modal_title.textContent = "Lock / Unlock";
+                this.modal_content.innerHTML = (
+                    '<p>^^^ Enter Your PIN Above ^^^</p>'
+                );
+                this.modal_execute.textContent = "Lock / Unlock";
+                return
         }
     }
 
@@ -401,11 +408,6 @@ const lock_timout = document.querySelector('#navbar-cell-1');
 const reset_calib = document.querySelector('#navbar-cell-2');
 const pin_change = document.querySelector('#navbar-cell-3');
 
-let STATEUPDATE = setInterval(() => {
-    SIOgetState();
-}, 1000);
-
-
 function displayAlarm() {
     const alarm = overlay.querySelector('#alarm');
     overlay.classList.add("display");
@@ -428,7 +430,6 @@ function hideAlarm() {
     overlay.removeEventListener('click', hideAlarm)
 }
 
-
 function loadImage(href, dx, dy, scale=1) {
     const image = new Image(60,45);
     image.src = href;
@@ -442,7 +443,6 @@ function loadImage(href, dx, dy, scale=1) {
 }
 
 loadImage("/static/images/projectModels/main_box.png", 0, 0, 0.8)
-
 
 projectIMGCanvas.addEventListener('click', function(e) {
     function isIntersecting(e, rect_x, rect_y, rect_w, rect_h) {
@@ -492,3 +492,49 @@ pin_change.addEventListener('click', ()=>{
     navbarModal.setModal(3)
     navbarModal.showModal()
 })
+
+const overviewModal = document.getElementById('overview');
+const box1_overviewModal = overviewModal.querySelector('#box-overview-1');
+const box2_overviewModal = overviewModal.querySelector('#box-overview-2');
+const box3_overviewModal = overviewModal.querySelector('#box-overview-3');
+const box4_overviewModal = overviewModal.querySelector('#box-overview-4');
+
+function bindOverviewModal(boxID, modal) {
+    const lockIMG = modal.querySelector('#toggle-lock');
+    lockIMG.addEventListener('click', () => {
+        navbarModal.setModal(5);
+        navbarModal.command_func = () => {
+            let {Temp, DoorOpen, Weight} = STATE.getBox(boxID);
+            SIOsendState(boxID, Temp, !DoorOpen);
+        };
+        navbarModal.showModal();
+    });
+}
+
+bindOverviewModal(1, box1_overviewModal);
+bindOverviewModal(2, box2_overviewModal);
+bindOverviewModal(3, box3_overviewModal);
+bindOverviewModal(4, box4_overviewModal);
+
+function updateOverview() {
+    function updateState(boxID, modal) {
+        const tempstate = modal.querySelector('#tempstate');
+        const lockstate = modal.querySelector('#lockstate');
+        const lockIMG = modal.querySelector('#toggle-lock');
+
+        let {Temp, DoorOpen, Weight} = STATE.getBox(boxID);
+        DoorOpen = true;
+        tempstate.textContent = Temp.toString()+"°C";
+        lockstate.textContent = DoorOpen ? "Unlocked" : "Locked";
+        lockIMG.style = `background-image: url(\"/static/images/lockModels/${(DoorOpen ? "unlocked" : "locked")}.png\")`
+    }
+    updateState(1, box1_overviewModal);
+    updateState(2, box2_overviewModal);
+    updateState(3, box3_overviewModal);
+    updateState(4, box4_overviewModal);
+}
+
+let STATEUPDATE = setInterval(() => {
+    SIOgetState();
+    updateOverview();
+}, 1000);

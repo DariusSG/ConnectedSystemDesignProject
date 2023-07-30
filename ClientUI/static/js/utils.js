@@ -31,6 +31,7 @@ class InternalState {
     updateBox(boxID, newState) {
         switch (boxID) {
             case 1:
+                if (newState.Weight - this.box1.Weight)
                 this.box1 = newState;
                 break;
             case 2:
