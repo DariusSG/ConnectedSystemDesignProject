@@ -325,12 +325,16 @@ class OLEDThread(Thread):
                         self.oled_pass += key[1]
                         self.flagDisplay = True if len(self.oled_pass) == 4 else False
         elif self.currentState == 'TempSet':
+            for comp in CompartmentState:
+                CompartmentState[comp]["DoorOpen"] = True
             currentCompartment: int = SensorState['keylock'] + 1
             TempSet: int = int((85 * SensorState['pot']) - 25)
             oledDriver.TempSetDisplay(currentCompartment, TempSet)
             CompartmentState[currentCompartment]['Temp'] = TempSet
             if keyInput.getInput() is not None:
                 self.currentState = "StandBy"
+                for comp in CompartmentState:
+                    CompartmentState[comp]["DoorOpen"] = False
         elif self.currentState == 'Timeout':
             oledDriver.OLED_Display(['Timeout'], coords=(2, 1))
             oledDriver.ShowDisplay()
