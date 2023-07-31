@@ -1,3 +1,18 @@
+function showToast(message, err=false) {
+    Toastify({
+        text: message,
+        duration: 3000,
+        close: true,
+        gravity: "bottom",
+        position: "right",
+        stopOnFocus: true,
+        style: {
+          background: err ? "FireBrick" : "MediumSpringGreen",
+          color: "Snow",
+        }
+      }).showToast();
+}
+
 class InternalState {
     constructor() {
         this.box1 = {
@@ -31,16 +46,23 @@ class InternalState {
     updateBox(boxID, newState) {
         switch (boxID) {
             case 1:
-                if (newState.Weight - this.box1.Weight)
+                if ((newState.Weight - this.box1.Weight) > 10)
+                    showToast("Weight Increase on Box 1")
                 this.box1 = newState;
                 break;
             case 2:
+                if ((newState.Weight - this.box2.Weight) > 10)
+                    showToast("Weight Increase on Box 2")
                 this.box2 = newState;
                 break;
             case 3:
+                if ((newState.Weight - this.box3.Weight) > 10)
+                    showToast("Weight Increase on Box 3")
                 this.box3 = newState;
                 break;
             case 4:
+                if ((newState.Weight - this.box4.Weight) > 10)
+                    showToast("Weight Increase on Box 4")
                 this.box4 = newState;
                 break;
         }
@@ -58,21 +80,6 @@ class InternalState {
                  return this.box4;
         }
     }
-}
-
-function showToast(message, err=false) {
-    Toastify({
-        text: message,
-        duration: 3000,
-        close: true,
-        gravity: "bottom",
-        position: "right",
-        stopOnFocus: true,
-        style: {
-          background: err ? "FireBrick" : "MediumSpringGreen",
-          color: "Snow",
-        }
-      }).showToast();
 }
 
 function socketio_callback(status_code) {
