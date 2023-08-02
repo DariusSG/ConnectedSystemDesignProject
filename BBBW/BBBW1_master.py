@@ -16,7 +16,7 @@ import Adafruit_BBIO.PWM as PWM
 
 SERVER_IP = "http://192.168.12.1:5000"
 SENSOR_NODE = "BBB1"
-REFRESH = 0.1
+REFRESH = 0.2
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 

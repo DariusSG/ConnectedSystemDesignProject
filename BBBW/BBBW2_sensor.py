@@ -9,7 +9,7 @@ import Adafruit_BBIO.GPIO as GPIO
 
 SERVER_IP = "http://192.168.12.1:5000"
 SENSOR_NODE = "BBB2"
-REFRESH = 2
+REFRESH = 0.5
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 
