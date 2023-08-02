@@ -2,3 +2,4 @@ venv/
 .vscode/
 .idea/
 build/
+CSDP.conf
