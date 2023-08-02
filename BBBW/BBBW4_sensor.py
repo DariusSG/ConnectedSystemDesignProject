@@ -6,7 +6,7 @@ import socketio
 
 import Adafruit_BBIO.ADC as ADC
 
-SERVER_IP = "http://192.168.12.2:5000"
+SERVER_IP = "http://192.168.12.1:5000"
 SENSOR_NODE = "BBB4"
 REFRESH = 4
 
