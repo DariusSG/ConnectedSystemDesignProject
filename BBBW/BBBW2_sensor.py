@@ -7,9 +7,9 @@ import socketio
 import Adafruit_BBIO.ADC as ADC
 import Adafruit_BBIO.GPIO as GPIO
 
-SERVER_IP = "http://192.168.12.2:5000"
+SERVER_IP = "http://192.168.12.1:5000"
 SENSOR_NODE = "BBB2"
-REFRESH = 0.5
+REFRESH = 2
 
 sio = socketio.Client(logger=True, engineio_logger=True)
 
@@ -40,7 +40,7 @@ def background_thread():
                 # GET SENSOR DATA
                 payload: list = [{
                     'sensor': 'reed1',
-                    'value': GPIO.input("P8_10")
+                    'value': GPIO.input("P9_42")
                 }, {
                     'sensor': 'reed2',
                     'value': GPIO.input("P8_10")

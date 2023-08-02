@@ -23,8 +23,11 @@ socket.on('UI_Tx', (RxData) => {
                 break;
 
             case 'alarm':
-                STATE.alarm = true
-                displayAlarm()
+                if (!STATE.alarm) {
+                    STATE.alarm = true
+                    displayAlarm()
+                }
+
                 break;
         }
     }
@@ -105,8 +108,10 @@ function SIOreset(pin) {
         'value': pin
     }, (status_code) => {
         socketio_callback(status_code);
-        if (status_code === 200)
+        if (status_code === 200) {
             showToast("Reset Sent Successfully")
+            STATE.alarm = false
+        }
     })
 }
 

@@ -1,72 +1,3 @@
-from functools import lru_cache
-import configparser
-from typing import Optional
-
-
-class FixedArray:
-    def __init__(self, size):
-        self.size = size
-        self._internal = [0 for i in range(self.size)]
-
-    def add(self, value):
-        self._internal.append(value)
-        self._internal.pop(0)
-
-    def get(self, index):
-        return self._internal[index]
-
-    def getSlice(self, start, stop):
-        if (0 <= start < self.size) and (0 <= stop < self.size) and (start < stop):
-            return self._internal[start:stop]
-        else:
-            return None
-
-    def __len__(self):
-        return self.size
-
-
-class RawConfig:
-    def __init__(self, config_name, auto_save=True):
-        self.__config__ = configparser.ConfigParser()
-        self.__config__.read(config_name)
-        self.config_path = config_name
-        self.auto_save = auto_save
-
-    def saveConfig(self, internal=False):
-        if internal and not self.auto_save:
-            return
-        with open(self.config_path, "w") as fp:
-            self.__config__.write(fp, True)
-
-    @lru_cache(maxsize=10, typed=False)
-    def getValue(self, section, key):
-        return self.__config__.get(section=section, option=key)
-
-    def writeValue(self, section, key, value):
-        self.__config__.set(section=section, option=key, value=value)
-        self.saveConfig(internal=True)
-
-    def removeValue(self, section, key):
-        self.__config__.remove_option(section=section, option=key)
-        self.saveConfig(internal=True)
-
-    def createSection(self, section):
-        self.__config__.add_section(section=section)
-        self.saveConfig(internal=True)
-
-    def removeSection(self, section):
-        self.__config__.remove_section(section=section)
-        self.saveConfig(internal=True)
-
-    def load_default(self, default_config: dict):
-        if self.__config__.has_section("USER"):
-            return
-        else:
-            self.__config__["DEFAULT"] = default_config
-            self.createSection("USER")
-            self.saveConfig(internal=True)
-
-
 class OLED:
     def __init__(self, display):
         from PIL import Image, ImageDraw, ImageFont
@@ -125,9 +56,8 @@ class OLED:
         offset_x, offset_y = offset_coords
         for x in range(imgOBJ.width):
             for y in range(imgOBJ.height):
-                if imgOBJ.getpixel((x,y)) != (0,0,0):
-                    true_x, true_y = max(x+offset_x, 0), min(y+offset_y, 40)
-                    self.Display.plot(true_x, true_y, 1)
+                true_x, true_y = max(x+offset_x, 0), min(y+offset_y, 40)
+                self.Display.plot(true_x, true_y, sum(imgOBJ.getpixel((x,y))))
 
     def ShowImage(self, path, offset_coords=(0,1)):
         ImageObj = self.Image.open(path)
@@ -135,47 +65,6 @@ class OLED:
 
     def ShowDisplay(self):
         self.Display.draw()
-
-
-class KeyInput:
-    def __init__(self):
-        self.current_key: Optional[str] = None
-        self.keyHolding: Optional[str] = None
-        self.key_press: Optional[str] = None
-        self.keyDown: bool = False
-
-    def write_input(self, value) -> None:
-        print(self.current_key, self.keyDown, self.key_press, self.keyHolding)
-        if 0.00 <= value < 0.10:
-            self.current_key = None
-        elif 0.16 < value < 0.18:
-            self.current_key = "T6"
-        elif 0.33 < value < 0.35:
-            self.current_key = "T5"
-        elif 0.50 < value < 0.52:
-            self.current_key = "T4"
-        elif 0.67 < value < 0.69:
-            self.current_key = "T3"
-        elif 0.84 < value < 0.86:
-            self.current_key = "T2"
-        elif 0.90 < value < 1.10:
-            self.current_key = "T1"
-
-        if (self.current_key is not None) and (self.keyHolding is None) and (not self.keyDown):
-            self.keyHolding = self.current_key
-            self.keyDown = True
-
-        elif (self.current_key is None) and (self.keyHolding is not None) and self.keyDown:
-            self.key_press = self.keyHolding
-            self.keyHolding = None
-            self.keyDown = False
-
-    def getInput(self) -> Optional[str]:
-        return self.current_key
-
-    def getKeyPress(self) -> Optional[str]:
-        result, self.key_press = self.key_press, None
-        return result
 
 
 class SSD1306OLED:
@@ -365,11 +254,7 @@ class SSD1306OLED:
         import time
 
         # Determine whether we're on MicroPython or CircuitPython
-        try:
-            import machine
-            self.is_micropython = True
-        except:
-            self.is_micropython = False
+        self.is_micropython = False
 
         # Set up instance properties
         self.i2c = i2c
@@ -469,7 +354,8 @@ class SSD1306OLED:
         # Bail if any co-ordinates are off the screen
         if x < 0 or x > self.width - 1 or y < 0 or y > self.height - 1:
             return self
-        if colour not in (0, 1): colour = 1
+        if colour not in (0, 1):
+            colour = 1
         byte = self._coords_to_index(x, y)
         bit = y - ((y >> 3) << 3)
         if colour == 1:
@@ -497,11 +383,14 @@ class SSD1306OLED:
         """
         # Make sure we have a thickness of at least one pixel
         thick = max(thick, 1)
-        if colour not in (0, 1): colour = 1
+        if colour not in (0, 1):
+            colour = 1
         # Look for vertical and horizontal lines
         track_by_x = True
-        if x == tox: track_by_x = False
-        if (toy == y) and (track_by_x is False): return self
+        if x == tox:
+            track_by_x = False
+        if (toy == y) and (track_by_x is False):
+            return self
         # assert (y != toy) and (track_by_x is False), "ERROR - Bad co-ordinates passed to line()"
 
         # Swap start and end values for L-R raster
@@ -586,9 +475,12 @@ class SSD1306OLED:
         y += 1
         x = max(x, 0)
         y = max(y, 0)
-        if x + width > self.width: width = self.width - x
-        if y + height > self.height: height = self.height - y
-        if colour not in (0, 1): colour = 1
+        if x + width > self.width:
+            width = self.width - x
+        if y + height > self.height:
+            height = self.height - y
+        if colour not in (0, 1):
+            colour = 1
         for i in range(y, y + height):
             for j in range(x, x + width):
                 self.plot(j, i, colour)
@@ -677,7 +569,8 @@ class SSD1306OLED:
         x = x_list[x]
         return ((y >> 3) * self.width) + x
 
-    def _index_to_coords(self, idx):
+    @staticmethod
+    def _index_to_coords(idx):
         """
         Convert bytearray index to pixel co-ordinates
         """
@@ -708,7 +601,8 @@ class SSD1306OLED:
 
             for j in range(1, len(glyph) + 1):
                 if j == len(glyph):
-                    if do_double: break
+                    if do_double:
+                        break
                     col_1 = self._flip(glyph[j - 1])
                 else:
                     col_1 = self._flip(glyph[j])
@@ -734,16 +628,22 @@ class SSD1306OLED:
                         z += 1
 
                     if do_double:
-                        if x < self.width: self._char_plot(x, y, k, col_0_left, z)
-                        if x + 1 < self.width: self._char_plot(x + 1, y, k, col_0_right, z)
-                        if x + 2 < self.width: self._char_plot(x + 2, y, k, col_1_left, z)
-                        if x + 3 < self.width: self._char_plot(x + 3, y, k, col_1_right, z)
+                        if x < self.width:
+                            self._char_plot(x, y, k, col_0_left, z)
+                        if x + 1 < self.width:
+                            self._char_plot(x + 1, y, k, col_0_right, z)
+                        if x + 2 < self.width:
+                            self._char_plot(x + 2, y, k, col_1_left, z)
+                        if x + 3 < self.width:
+                            self._char_plot(x + 3, y, k, col_1_right, z)
                     else:
-                        if x < self.width: self._char_plot(x, y, k, col_0, z)
+                        if x < self.width:
+                            self._char_plot(x, y, k, col_0, z)
 
                 x += (2 if do_double else 1)
                 if x >= self.width:
-                    if not do_wrap: return self
+                    if not do_wrap:
+                        return self
                     if y + bit_max < self.height:
                         x = 0
                         y += bit_max
@@ -755,7 +655,8 @@ class SSD1306OLED:
             if i < len(the_string) - 1:
                 x += space_size
                 if x >= self.width:
-                    if not do_wrap: return self
+                    if not do_wrap:
+                        return self
                     if y + bit_max < self.height:
                         x = 0
                         y += bit_max
@@ -763,7 +664,8 @@ class SSD1306OLED:
                         break
         return self
 
-    def _flip(self, value):
+    @staticmethod
+    def _flip(value):
         """
         Rotates the character array from the saved state
         to that required by the screen orientation
@@ -779,9 +681,11 @@ class SSD1306OLED:
         Write a pixel from a character glyph to the buffer
         """
         b = self._coords_to_index(x, y + k)
-        if c & (1 << k) != 0: self.buffer[b] |= (1 << a)
+        if c & (1 << k) != 0:
+            self.buffer[b] |= (1 << a)
 
-    def _stretch(self, x):
+    @staticmethod
+    def _stretch(x):
         """
         Pixel-doubles an 8-bit value to 16 bits
         """
