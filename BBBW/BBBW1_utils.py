@@ -121,12 +121,11 @@ class OLED:
         self.standby_cycle += 1
 
     def loadImage(self, imgOBJ, offset_coords):
-        pixels = imgOBJ.load()
         self.Display.clear().draw()
         offset_x, offset_y = offset_coords
         for x in range(imgOBJ.width):
             for y in range(imgOBJ.height):
-                if pixels[(x, y)]:
+                if imgOBJ.getpixel((x,y)) != (0,0,0):
                     true_x, true_y = max(x+offset_x, 0), min(y+offset_y, 40)
                     self.Display.plot(true_x, true_y, 1)
 
@@ -179,7 +178,6 @@ class KeyInput:
         return result
 
 
-
 class SSD1306OLED:
     """
     A simple driver for the I2C-connected Solomon SSD1306 controller chip and an OLED display.
@@ -190,6 +188,7 @@ class SSD1306OLED:
     Author:    smittytone
     Copyright: 2022, Tony Smith
     Licence:   MIT
+    Modified by DariusSG
     """
 
     # *********** CONSTANTS **********
@@ -806,4 +805,3 @@ class SSD1306OLED:
                 self.rst.off()
         else:
             self.rst.value = is_on
-

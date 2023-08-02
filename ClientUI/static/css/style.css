@@ -3,6 +3,7 @@ body {
   font-size: 20px;
   margin: 0;
   padding: 0;
+  background-color: #A7D9E1;
 }
 
 div.navbar {
@@ -276,7 +277,7 @@ div#overview div.box-overview {
   bottom: 100px;
   border: 2px solid black;
   border-radius: 15px;
-  background-color: ghostwhite;
+  background-color: #8FA9FB;
 }
 
 div#overview div.box-overview div span {

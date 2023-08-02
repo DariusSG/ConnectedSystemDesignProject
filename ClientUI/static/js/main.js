@@ -523,7 +523,6 @@ function updateOverview() {
         const lockIMG = modal.querySelector('#toggle-lock');
 
         let {Temp, DoorOpen, Weight} = STATE.getBox(boxID);
-        DoorOpen = true;
         tempstate.textContent = Temp.toString()+"°C";
         lockstate.textContent = DoorOpen ? "Unlocked" : "Locked";
         lockIMG.style = `background-image: url(\"/static/images/lockModels/${(DoorOpen ? "unlocked" : "locked")}.png\")`

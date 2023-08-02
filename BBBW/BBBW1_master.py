@@ -90,6 +90,7 @@ CompartmentState = {
 Timeout = 10
 InternalAlarm = False
 ResetStatus = False
+HoldAlarm = False
 clients = []
 
 ADC.setup()
@@ -165,16 +166,6 @@ def BBB1_Rx(RxData: dict):
             if RxData['key'] == 'state':
                 boxID = RxData['value']
                 weight = sum(CompartmentState[boxID]['Weight'].getSlice(0, 5)) / 5
-                print("UI_Tx", {
-                    "act": 'update',
-                    "key": 'state',
-                    'value': {
-                        'boxID': boxID,
-                        'Temp': CompartmentState[boxID]['Temp'],
-                        'DoorOpen': CompartmentState[boxID]['DoorOpen'],
-                        'Weight': weight
-                    }
-                })
                 socketio.emit("UI_Tx", {
                     "act": 'update',
                     "key": 'state',
@@ -186,7 +177,7 @@ def BBB1_Rx(RxData: dict):
                     }
                 })
             elif RxData['key'] == 'alarm_pin':
-                if RxData['value']['prev'] == rawconfig.getValue("USER", "Password"):
+                if RxData['value'] == rawconfig.getValue("USER", "Password"):
                     socketio.emit("UI_Tx", {
                         "act": 'update',
                         "key": 'alarm_RESET'
@@ -229,7 +220,7 @@ def CheckAlarmStatus():
                 CompartmentState[Compartment]['Alarm'] = False
                 if Compartment in [3, 4]:
                     continue
-                if (not CompartmentState[Compartment]['DoorOpen']) and SensorState.get(f'reed{Compartment}') != \
+                if (not CompartmentState[Compartment]['DoorOpen']) and (not SensorState.get(f'reed{Compartment}')) != \
                         CompartmentState[Compartment]['DoorOpen']:
                     CompartmentState[Compartment]['Alarm'] = True
                     InternalAlarm = True
@@ -273,7 +264,7 @@ class OLEDThread(Thread):
         self.flagDisplay = False
 
     def runState(self):
-        global InternalAlarm, keyInput, oledDriver, ResetStatus
+        global InternalAlarm, keyInput, oledDriver, ResetStatus, HoldAlarm
         if ResetStatus:
             oledDriver.OLED_Display(['Reset In', 'Progress'])
         elif self.currentState == 'StandBy':
@@ -325,6 +316,7 @@ class OLEDThread(Thread):
                         self.oled_pass += key[1]
                         self.flagDisplay = True if len(self.oled_pass) == 4 else False
         elif self.currentState == 'TempSet':
+            HoldAlarm = True
             for comp in CompartmentState:
                 CompartmentState[comp]["DoorOpen"] = True
             currentCompartment: int = SensorState['keylock'] + 1
@@ -335,6 +327,7 @@ class OLEDThread(Thread):
                 self.currentState = "StandBy"
                 for comp in CompartmentState:
                     CompartmentState[comp]["DoorOpen"] = False
+                ResetStatus, HoldAlarm = True, False
         elif self.currentState == 'Timeout':
             oledDriver.OLED_Display(['Timeout'], coords=(2, 1))
             oledDriver.ShowDisplay()
@@ -342,8 +335,7 @@ class OLEDThread(Thread):
             self.currentState = 'Admin'
         if self.currentState == 'StandBy' and InternalAlarm:
             self.currentState = 'Alarm'
-        elif self.currentState in ['TempSet'] and InternalAlarm:
-            ResetStatus = True
+
 
     def run(self):
         while not self.stopSignal.is_set():
@@ -374,7 +366,7 @@ class ApplicationThread(Thread):
                 CompartmentState[boxID]['Weight'].add(SensorState[f'force{boxID}'])
             if ResetStatus:
                 Recalibrate()
-            elif not InternalAlarm:
+            elif (not InternalAlarm) and (not HoldAlarm):
                 CheckAlarmStatus()
             if InternalAlarm:
                 PWM.start("P8_19", 50)
