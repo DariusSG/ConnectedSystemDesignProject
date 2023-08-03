@@ -4,7 +4,7 @@ SensorConfig = {
     "BBB1": {
         "sensor": ["keypad"],
         "value": {
-            "keypad": float,
+            "keypad": str,
         }
     },
     "BBB2": {

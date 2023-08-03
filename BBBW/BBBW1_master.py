@@ -88,7 +88,7 @@ def background_thread():
             print('Unable to transmit data.')
             print(e)
             pass
-        time.sleep(REFRESH)
+        sio.sleep(REFRESH)
 
 
 def alarm_thread():
@@ -98,11 +98,12 @@ def alarm_thread():
             print("Alarm")
             PWM.start("P8_19", 50)
             PWM.set_frequency("P8_19", 1000)
-            time.sleep(0.1)
+            sio.sleep(0.3)
             PWM.set_frequency("P8_19", 2000)
-            time.sleep(0.1)
+            sio.sleep(0.3)
             PWM.stop("P8_19")
-        time.sleep(0.1)
+        Alarm = False
+        sio.sleep(0.3)
 
 
 def oled_thread():

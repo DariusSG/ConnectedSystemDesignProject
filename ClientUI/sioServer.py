@@ -162,11 +162,12 @@ def UI_Rx(RxData: dict):
 def CheckAlarmStatus():
     global CompartmentState, InternalAlarm
     with thread_lock:
-        TiltDistance = float(rawconfig.getValue("USER", "TiltDistance"))
+        TiltDistance = 100 * float(rawconfig.getValue("USER", "TiltDistance"))
         InternalAlarm = False
-        if 10 < int(TiltDistance - SensorState["infra"]) < 10:
+        print("Tilt", TiltDistance, 100 * SensorState["infra"])
+        if not (-5 < int(TiltDistance - (100 * SensorState["infra"])) < 5):
             print("Alarm Active From Infra")
-            # InternalAlarm = True
+            InternalAlarm = True
         for Compartment in CompartmentState.keys():
             CompartmentState[Compartment]['Alarm'] = False
             if Compartment in [3, 4]:
@@ -183,7 +184,7 @@ def CheckAlarmStatus():
                     sum(CompartmentState[Compartment]['Weight'].getSlice(2, 4)) / 2), 5)
             print(Compartment, new_val, prev_val)
             if (not CompartmentState[Compartment]['DoorOpen']) \
-                    and ((prev_val - new_val) > 250):
+                    and ((new_val - prev_val) > 250):
                 CompartmentState[Compartment]['Alarm'] = True
                 InternalAlarm = True
                 print(f"Alarm Active From Force {Compartment}")
@@ -212,7 +213,6 @@ def ackCommandOLED(result):
 
 def sendCommandOLED(state, args):
     global OLEDWait
-    OLEDWait = True
     socketio.emit("BBB1_Rx", {
             "act": "update",
             "value": {
@@ -222,7 +222,7 @@ def sendCommandOLED(state, args):
                     "value": args
                 }
             }
-    }, callback=ackCommandOLED)
+    })
 
 
 class OLEDThread(Thread):
@@ -310,8 +310,7 @@ class OLEDThread(Thread):
         global OLEDWait
         while True:
             print("OLED Heartbeat")
-            if not OLEDWait:
-                self.runState()
+            self.runState()
             socketio.sleep(0.35)
 
     def stop(self):
@@ -337,9 +336,17 @@ class ApplicationThread(Thread):
                     Recalibrate()
                 elif (not InternalAlarm) and (not HoldAlarm):
                     CheckAlarmStatus()
+                if InternalAlarm:
+                    socketio.emit("BBB1_Rx", {
+                        'act': "update",
+                        'value': {
+                            'object': 'alarm',
+                            'value': InternalAlarm
+                        }
+                    })
             except Exception as e:
                 print(e)
-            socketio.sleep(0.25)
+            socketio.sleep(0.5)
 
     def stop(self):
         self.stopSignal.set()
