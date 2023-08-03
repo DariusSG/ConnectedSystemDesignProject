@@ -61,7 +61,7 @@ def background_thread():
             print('Unable to transmit data.')
             print(e)
             pass
-        time.sleep(REFRESH)
+        sio.sleep(REFRESH)
 
 
 if __name__ == '__main__':
@@ -74,4 +74,5 @@ if __name__ == '__main__':
         except:
             print("Trying to connect to the server.")
             pass
+    sio.sleep(1)
     background_thread()

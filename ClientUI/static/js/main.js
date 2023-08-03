@@ -1,4 +1,4 @@
-const socket = io('http://192.168.12.2:5000')
+const socket = io('http://192.168.12.1:5000')
 let STATE = new InternalState();
 
 const overlay = document.querySelector("#overlay");
@@ -34,7 +34,7 @@ socket.on('UI_Tx', (RxData) => {
 })
 
 function SIOsendState(boxID, TempSet, DoorOpen) {
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'update',
         'key': 'state',
         'value': {
@@ -46,22 +46,22 @@ function SIOsendState(boxID, TempSet, DoorOpen) {
 }
 
 function SIOgetState() {
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'get',
         'key': 'state',
         'value': 1
     })
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'get',
         'key': 'state',
         'value': 2
     })
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'get',
         'key': 'state',
         'value': 3
     })
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'get',
         'key': 'state',
         'value': 4
@@ -69,7 +69,7 @@ function SIOgetState() {
 }
 
 function SIOsendPIN(prev_pin, new_pin) {
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'update',
         'key': 'password',
         'value': {
@@ -90,19 +90,21 @@ function ResetPIN(pin, content) {
 }
 
 function SIOstopAlarm(pin) {
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'get',
         'key': 'alarm_pin',
         'value': pin
     }, (status_code) => {
         socketio_callback(status_code);
-        if (status_code === 200)
+        if (status_code === 200) {
             showToast("Alarm Stop")
+            STATE.alarm = false
+        }
     })
 }
 
 function SIOreset(pin) {
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'get',
         'key': 'alarm_pin',
         'value': pin
@@ -116,7 +118,7 @@ function SIOreset(pin) {
 }
 
 function SIOChangeTimeout(pin, val) {
-    socket.emit('BBB1_Rx', {
+    socket.emit('UI_Rx', {
         'act': 'update',
         'key': 'timeout',
         'value': {

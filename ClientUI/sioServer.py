@@ -1,6 +1,7 @@
-from typing import Optional
+import time
 from threading import Lock, Event, Thread
 
+import app
 from ClientUI import socketio
 from ClientUI.sensorConfig import vaildateRxData
 from ClientUI.utils import RawConfig, FixedArray, KeyInput
@@ -15,8 +16,6 @@ rawconfig = RawConfig(CONFIG_FILE)
 rawconfig.load_default(DEFAULT_CONFIG)
 print("Password: ", rawconfig.getValue('USER', "Password"))
 
-thread: Optional['ApplicationThread'] = None
-oledThread: Optional['OLEDThread'] = None
 thread_lock = Lock()
 
 keyInput = KeyInput()
@@ -25,7 +24,7 @@ Timeout = 10
 InternalAlarm = False
 ResetStatus = False
 HoldAlarm = False
-clients = []
+OLEDWait = False
 
 SensorState = {
     "reed1": False,
@@ -163,7 +162,7 @@ def UI_Rx(RxData: dict):
 def CheckAlarmStatus():
     global CompartmentState, InternalAlarm
     with thread_lock:
-        TiltDistance = int(rawconfig.getValue("USER", "TiltDistance"))
+        TiltDistance = float(rawconfig.getValue("USER", "TiltDistance"))
         InternalAlarm = False
         if 10 < int(TiltDistance - SensorState["infra"]) < 10:
             print("Alarm Active From Infra")
@@ -189,12 +188,6 @@ def CheckAlarmStatus():
                 InternalAlarm = True
                 print(f"Alarm Active From Force {Compartment}")
 
-        if InternalAlarm:
-            socketio.emit("UI_Rx", {
-                "act": "update",
-                "key": "alarm"
-            })
-
 
 def Recalibrate():
     global InternalAlarm, ResetStatus
@@ -207,17 +200,29 @@ def Recalibrate():
     ResetStatus = False
 
 
+def ackCommandOLED(result):
+    global OLEDWait
+    if OLEDWait:
+        if result == 200:
+            print("OLED command Successful")
+        else:
+            print("OLED Command Failure")
+        OLEDWait = False
+
+
 def sendCommandOLED(state, args):
-    socketio.emit("BBBW1_Rx", {
-        "act": "update",
-        "value": {
-            "object": "oled",
+    global OLEDWait
+    OLEDWait = True
+    socketio.emit("BBB1_Rx", {
+            "act": "update",
             "value": {
-                "state": state,
-                "value": args
+                "object": "oled",
+                "value": {
+                    "state": state,
+                    "value": args
+                }
             }
-        }
-    })
+    }, callback=ackCommandOLED)
 
 
 class OLEDThread(Thread):
@@ -233,7 +238,7 @@ class OLEDThread(Thread):
     def runState(self):
         global InternalAlarm, keyInput, ResetStatus, HoldAlarm
         if ResetStatus:
-            sendCommandOLED("OLED_Display", ['Reset In', 'Progress'])
+            # sendCommandOLED("OLED_Display", (['Reset In', 'Progress']))
             self.currentState = 'StandBy'
         elif self.currentState == 'StandBy':
             sendCommandOLED("TemperatureCycle",
@@ -295,15 +300,17 @@ class OLEDThread(Thread):
                     CompartmentState[comp]["DoorOpen"] = False
                 ResetStatus, HoldAlarm = True, False
         elif self.currentState == 'Timeout':
-            sendCommandOLED("OLED_Display", (['Timeout'], {"coords": (2, 1)}))
+            # sendCommandOLED("OLED_Display", (['Timeout'], {"coords": (2, 1)}))
             socketio.sleep(Timeout + 5)
             self.currentState = 'Admin'
         if self.currentState == 'StandBy' and InternalAlarm:
             self.currentState = 'Alarm'
 
     def run(self):
-        while not self.stopSignal.is_set():
-            with thread_lock:
+        global OLEDWait
+        while True:
+            print("OLED Heartbeat")
+            if not OLEDWait:
                 self.runState()
             socketio.sleep(0.35)
 
@@ -320,14 +327,18 @@ class ApplicationThread(Thread):
         global SensorState, CompartmentState, InternalAlarm, keyInput
         Recalibrate()
         socketio.sleep(1)
-        while not self.stopSignal.is_set():
-            keyInput.write_input(SensorState.get("keypad"))
-            CompartmentState[1]['Weight'].add(SensorState[f'force{1}'])
-            CompartmentState[2]['Weight'].add(SensorState[f'force{2}'])
-            if ResetStatus:
-                Recalibrate()
-            elif (not InternalAlarm) and (not HoldAlarm):
-                CheckAlarmStatus()
+        while True:
+            print("Heartbeat")
+            try:
+                keyInput.write_input(SensorState.get("keypad"))
+                CompartmentState[1]['Weight'].add(SensorState[f'force{1}'])
+                CompartmentState[2]['Weight'].add(SensorState[f'force{2}'])
+                if ResetStatus:
+                    Recalibrate()
+                elif (not InternalAlarm) and (not HoldAlarm):
+                    CheckAlarmStatus()
+            except Exception as e:
+                print(e)
             socketio.sleep(0.25)
 
     def stop(self):
@@ -338,15 +349,15 @@ class ApplicationThread(Thread):
 def connect():
     global thread, oledThread
     print('Connection established')
-    with thread_lock:
-        if thread is None and oledThread is None:
-            thread = ApplicationThread()
-            oledThread = OLEDThread()
-            thread.start()
-            oledThread.start()
 
 
 @socketio.on('disconnect')
 def disconnect():
     global thread, oledThread
     print('Disconnected from server.')
+
+
+thread = ApplicationThread()
+oledThread = OLEDThread()
+thread.start()
+oledThread.start()

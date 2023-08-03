@@ -10,8 +10,8 @@ SensorConfig = {
     "BBB2": {
         "sensor": ["reed1", "reed2", "force1", "force2"],
         "value": {
-            "reed1": bool,
-            "reed2": bool,
+            "reed1": int,
+            "reed2": int,
             "force1": float,
             "force2": float
         }

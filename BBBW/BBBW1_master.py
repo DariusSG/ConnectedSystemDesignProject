@@ -57,6 +57,7 @@ def BBB1_Rx(RxData: dict):
             Alarm = RxData['value']['value']
         elif RxData['value']['object'] == 'oled':
             OLEDSTATE = RxData['value']['value']
+        return 200
 
 
 @sio.event
@@ -105,10 +106,11 @@ def alarm_thread():
 
 
 def oled_thread():
-    global OLEDSTATE
+    global OLEDSTATE, oledDriver
     while True:
         state = OLEDSTATE.get("state", None)
         val: tuple | str | list | bool | None = OLEDSTATE.get("value", None)
+        print(state, val)
         if state == 'OLED_Display':
             oledDriver.OLED_Display(*val)
 
@@ -129,9 +131,8 @@ def oled_thread():
 
         elif state == 'TempSetDisplay':
             oledDriver.TempSetDisplay(*val)
-
         oledDriver.ShowDisplay()
-        time.sleep(0.25)
+        sio.sleep(0.25)
 
 
 if __name__ == '__main__':
@@ -144,7 +145,7 @@ if __name__ == '__main__':
         except Exception:
             print("Trying to connect to the server.")
             pass
-    executor = ThreadPoolExecutor(max_workers=2)
-    executor.submit(background_thread)
-    executor.submit(alarm_thread)
-    executor.submit(oled_thread)
+    sio.sleep(1)
+    sio.start_background_task(oled_thread)
+    sio.start_background_task(alarm_thread)
+    sio.start_background_task(background_thread)
